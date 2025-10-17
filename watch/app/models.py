@@ -323,11 +323,12 @@ class MajorCase(db.Model, TimestampMixin):
 	section = db.Column(db.String(50), nullable=True)  # Only required for students
 	date = db.Column(db.Date, nullable=False, default=date.today)
 	remarks = db.Column(db.Text, nullable=True)
-	# Attachment fields for major cases only
+	# Attachment fields for major cases only - Database BLOB storage
 	attachment_filename = db.Column(db.String(255), nullable=True)  # Original filename
-	attachment_path = db.Column(db.String(500), nullable=True)  # Path to stored file
+	attachment_data = db.Column(db.LargeBinary, nullable=True)  # File content as BLOB
 	attachment_size = db.Column(db.Integer, nullable=True)  # File size in bytes
 	attachment_type = db.Column(db.String(100), nullable=True)  # MIME type
+	attachment_hash = db.Column(db.String(64), nullable=True)  # File hash for integrity
 	
 	def __repr__(self):
 		return f'<MajorCase {self.id}: {self.first_name} {self.last_name} - {self.entity_type} - {self.program_or_dept}>'
@@ -463,11 +464,12 @@ class Case(db.Model, TimestampMixin):
 	date_reported = db.Column(db.Date, nullable=False, default=date.today)
 	status = db.Column(db.String(50), nullable=False, default='open')  # open, closed, resolved, etc.
 	remarks = db.Column(db.Text, nullable=True)
-	# Attachment fields for major cases only
+	# Attachment fields for major cases only - Database BLOB storage
 	attachment_filename = db.Column(db.String(255), nullable=True)  # Original filename
-	attachment_path = db.Column(db.String(500), nullable=True)  # Path to stored file
+	attachment_data = db.Column(db.LargeBinary, nullable=True)  # File content as BLOB
 	attachment_size = db.Column(db.Integer, nullable=True)  # File size in bytes
 	attachment_type = db.Column(db.String(100), nullable=True)  # MIME type
+	attachment_hash = db.Column(db.String(64), nullable=True)  # File hash for integrity
 	
 	# Relationship to person
 	person = db.relationship('Person', lazy=True)

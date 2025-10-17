@@ -5,6 +5,7 @@ Handles secure file uploads with proper validation and sanitization.
 
 import os
 import uuid
+import hashlib
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask import current_app, abort
@@ -105,7 +106,7 @@ def save_upload(file_storage, subdir=""):
 
 def save_attachment(file, case_id, case_type='major'):
     """
-    Save uploaded file for a case attachment with enhanced security and logging.
+    Save uploaded file for a case attachment to database as BLOB with enhanced security and logging.
     
     Args:
         file: The uploaded file object (FileStorage)
@@ -113,7 +114,7 @@ def save_attachment(file, case_id, case_type='major'):
         case_type: Type of case ('major' or 'minor')
     
     Returns:
-        dict: File information including path, filename, size, type
+        dict: File information including filename, size, type, hash
         None: If upload failed
         
     Raises:
@@ -135,17 +136,15 @@ def save_attachment(file, case_id, case_type='major'):
     if file_size > max_size:
         raise ValueError(f"File too large. Maximum size: {max_size // (1024*1024)}MB")
     
-    # Create upload directory if it doesn't exist
-    upload_dir = os.path.join(current_app.instance_path, 'uploads', case_type, str(case_id))
-    os.makedirs(upload_dir, exist_ok=True)
+    # Read file content
+    file.seek(0)  # Reset to beginning
+    file_data = file.read()
+    
+    # Generate file hash for integrity
+    file_hash = hashlib.sha256(file_data).hexdigest()
     
     # Generate secure filename
     original_filename = secure_filename(file.filename)
-    unique_filename = generate_unique_filename(original_filename)
-    file_path = os.path.join(upload_dir, unique_filename)
-    
-    # Save file
-    file.save(file_path)
     
     # Get MIME type
     mime_type = file.content_type or 'application/octet-stream'
@@ -168,17 +167,20 @@ def save_attachment(file, case_id, case_type='major'):
     
     return {
         'filename': original_filename,
-        'path': file_path,
+        'data': file_data,
         'size': file_size,
-        'type': mime_type
+        'type': mime_type,
+        'hash': file_hash
     }
 
 def delete_attachment(file_path):
     """
     Delete an attachment file securely with logging.
+    NOTE: This function is now deprecated for database storage.
+    Files are automatically deleted when database records are deleted.
     
     Args:
-        file_path: Path to the file to delete
+        file_path: Path to the file to delete (legacy support)
         
     Returns:
         bool: True if successful, False otherwise
@@ -225,6 +227,42 @@ def delete_attachment(file_path):
             return True
     except Exception as e:
         current_app.logger.error(f"Error deleting file {file_path}: {str(e)}")
+    return False
+
+def clear_case_attachment(case):
+    """
+    Clear attachment data from a case (for database storage).
+    
+    Args:
+        case: Case object (MajorCase or Case model)
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Clear attachment fields
+        case.attachment_filename = None
+        case.attachment_data = None
+        case.attachment_size = None
+        case.attachment_type = None
+        case.attachment_hash = None
+        
+        # Security logging
+        try:
+            from flask import session
+            from .security_logger import log_file_deletion
+            log_file_deletion(
+                filename=case.attachment_filename or 'unknown',
+                deleter_id=session.get('user_id'),
+                deleter_name=session.get('username')
+            )
+        except Exception as log_error:
+            # Don't fail deletion if logging fails
+            current_app.logger.error(f"Security logging failed: {str(log_error)}")
+        
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Error clearing attachment from case: {str(e)}")
     return False
 
 def get_attachment_url(file_path, case_id, case_type='major'):

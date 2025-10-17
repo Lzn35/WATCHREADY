@@ -436,9 +436,10 @@ def add_major_case(entity_type):
 					attachment_info = save_attachment(file, case.id, 'major')
 					if attachment_info:
 						case.attachment_filename = attachment_info['filename']
-						case.attachment_path = attachment_info['path']
+						case.attachment_data = attachment_info['data']
 						case.attachment_size = attachment_info['size']
 						case.attachment_type = attachment_info['type']
+						case.attachment_hash = attachment_info['hash']
 				except ValueError as e:
 					flash(f'File upload error: {str(e)}', 'error')
 					db.session.rollback()
@@ -520,16 +521,17 @@ def edit_major_case(case_id):
 			file = request.files['attachment']
 			if file and file.filename != '':
 				try:
-					# Delete old attachment if exists
-					if case.attachment_path and os.path.exists(case.attachment_path):
-						delete_attachment(case.attachment_path)
+					# Clear old attachment data from database
+					from ...utils.file_upload import clear_case_attachment
+					clear_case_attachment(case)
 					
 					attachment_info = save_attachment(file, case.id, 'major')
 					if attachment_info:
 						case.attachment_filename = attachment_info['filename']
-						case.attachment_path = attachment_info['path']
+						case.attachment_data = attachment_info['data']
 						case.attachment_size = attachment_info['size']
 						case.attachment_type = attachment_info['type']
+						case.attachment_hash = attachment_info['hash']
 				except ValueError as e:
 					flash(f'File upload error: {str(e)}', 'error')
 					return redirect(url_for(f'cases.major_cases_{case.entity_type}'))
@@ -580,9 +582,9 @@ def delete_major_case(case_id):
 		case_name = f"{case.first_name} {case.last_name}"
 		entity_type = case.entity_type
 		
-		# Delete attachment file if exists
-		if case.attachment_path and os.path.exists(case.attachment_path):
-			delete_attachment(case.attachment_path)
+		# Clear attachment data from database (no file deletion needed)
+		from ...utils.file_upload import clear_case_attachment
+		clear_case_attachment(case)
 		
 		db.session.delete(case)
 		db.session.commit()
@@ -608,7 +610,7 @@ def delete_major_case(case_id):
 @bp.get('/attachment/<int:case_id>')
 @login_required
 def download_attachment(case_id):
-	"""Download attachment for a case (supports both MajorCase and Case models)"""
+	"""Download attachment for a case (supports both MajorCase and Case models) - Database BLOB storage"""
 	# Try to find the case in both models
 	case = MajorCase.query.get(case_id)
 	if not case:
@@ -617,14 +619,25 @@ def download_attachment(case_id):
 	if not case:
 		abort(404)
 	
-	if not case.attachment_path or not os.path.exists(case.attachment_path):
+	# Check if attachment exists in database
+	if not case.attachment_data or not case.attachment_filename:
 		abort(404)
 	
 	try:
-		return send_file(
-			case.attachment_path,
-			as_attachment=True,
-			download_name=case.attachment_filename or 'attachment'
+		from io import BytesIO
+		from flask import Response
+		
+		# Create BytesIO object from database BLOB
+		file_data = BytesIO(case.attachment_data)
+		
+		# Return file as download
+		return Response(
+			file_data.getvalue(),
+			mimetype=case.attachment_type or 'application/octet-stream',
+			headers={
+				'Content-Disposition': f'attachment; filename="{case.attachment_filename}"',
+				'Content-Length': str(case.attachment_size or len(case.attachment_data))
+			}
 		)
 	except Exception as e:
 		abort(404)
@@ -633,7 +646,7 @@ def download_attachment(case_id):
 @bp.get('/view-attachment/<int:case_id>')
 @login_required
 def view_attachment(case_id):
-	"""View attachment in new tab (supports both MajorCase and Case models)"""
+	"""View attachment in new tab (supports both MajorCase and Case models) - Database BLOB storage"""
 	# Try to find the case in both models
 	case = MajorCase.query.get(case_id)
 	if not case:
@@ -642,15 +655,25 @@ def view_attachment(case_id):
 	if not case:
 		abort(404)
 	
-	if not case.attachment_path or not os.path.exists(case.attachment_path):
+	# Check if attachment exists in database
+	if not case.attachment_data or not case.attachment_filename:
 		abort(404)
 	
 	try:
-		return send_file(
-			case.attachment_path,
-			as_attachment=False,
-			download_name=case.attachment_filename or 'attachment',
-			mimetype=case.attachment_type or 'application/octet-stream'
+		from io import BytesIO
+		from flask import Response
+		
+		# Create BytesIO object from database BLOB
+		file_data = BytesIO(case.attachment_data)
+		
+		# Return file for viewing (not as download)
+		return Response(
+			file_data.getvalue(),
+			mimetype=case.attachment_type or 'application/octet-stream',
+			headers={
+				'Content-Disposition': f'inline; filename="{case.attachment_filename}"',
+				'Content-Length': str(case.attachment_size or len(case.attachment_data))
+			}
 		)
 	except Exception as e:
 		abort(404)
@@ -669,14 +692,9 @@ def delete_case_attachment(case_id):
 		abort(404)
 	
 	try:
-		if case.attachment_path and os.path.exists(case.attachment_path):
-			delete_attachment(case.attachment_path)
-		
-		# Clear attachment fields
-		case.attachment_filename = None
-		case.attachment_path = None
-		case.attachment_size = None
-		case.attachment_type = None
+		# Clear attachment data from database
+		from ...utils.file_upload import clear_case_attachment
+		clear_case_attachment(case)
 		
 		db.session.commit()
 		
