@@ -1,0 +1,42 @@
+# Python
+venv/
+watch/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Flask
+instance/
+uploads/
+complaints/
+reports/
+attachments/
+deskapp-original/
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite
+*.sqlite.backup.*
+*.db
+
+# Logs
+*.log
+
