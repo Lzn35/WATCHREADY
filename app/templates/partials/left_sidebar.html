@@ -1,0 +1,109 @@
+<div class="left-side-bar">
+	<div class="brand-logo">
+		<div style="display: flex; vertical-align: middle; align-items: center; position: relative; height: 100%; padding: 0px 20px 0px;">
+			<img src="{{ url_for('static', filename='img/Watch_Logo.png') }}" 
+				 alt="WATCH Logo" 
+				 style="max-height: 200px; width: auto; object-fit: contain;" />
+		</div>
+		<div class="close-sidebar" data-toggle="left-sidebar-close">
+			<i class="ion-close-round"></i>
+		</div>
+	</div>
+	<div class="menu-block customscroll">
+		<div class="sidebar-menu">
+			<ul id="accordion-menu">
+				<li class="dropdown">
+					<a href="{{ url_for('core.dashboard') }}" class="dropdown-toggle no-arrow">
+						<span class="micon bi bi-house"></span
+						><span class="mtext">Dashboard</span>
+					</a>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon bi bi-calendar4-week"></span
+						><span class="mtext">Attendance</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{ url_for('attendance.schedule_management') }}">
+							<i class="bi bi-calendar-plus" style="margin-right: 8px;"></i>Schedule Management
+						</a></li>
+						<li><a href="{{ url_for('attendance.list_checklists') }}">
+							<i class="bi bi-check2-square" style="margin-right: 8px;"></i>Attendance Checklist
+						</a></li>
+						<li><a href="{{ url_for('attendance.attendance_history') }}">
+							<i class="bi bi-clock-history" style="margin-right: 8px;"></i>Attendance History
+						</a></li>
+					</ul>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon bi bi-file-earmark-text"></span
+						><span class="mtext">Cases</span>
+					</a>
+					<ul class="submenu">
+						<li class="dropdown">
+							<a href="javascript:;" class="dropdown-toggle">
+								<i class="bi bi-exclamation-circle" style="margin-right: 8px;"></i>Minor Cases
+							</a>
+							<ul class="submenu">
+								<li><a href="{{ url_for('cases.minor_cases_student') }}">
+									<i class="bi bi-person" style="margin-right: 8px;"></i>Students
+								</a></li>
+								<li><a href="{{ url_for('cases.minor_cases_faculty') }}">
+									<i class="bi bi-mortarboard" style="margin-right: 8px;"></i>Faculty
+								</a></li>
+								<li><a href="{{ url_for('cases.minor_cases_staff') }}">
+									<i class="bi bi-briefcase" style="margin-right: 8px;"></i>Staff
+								</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="javascript:;" class="dropdown-toggle">
+								<i class="bi bi-exclamation-triangle" style="margin-right: 8px;"></i>Major Cases
+							</a>
+							<ul class="submenu">
+								<li><a href="{{ url_for('cases.major_cases_student') }}">
+									<i class="bi bi-person" style="margin-right: 8px;"></i>Students
+								</a></li>
+								<li><a href="{{ url_for('cases.major_cases_faculty') }}">
+									<i class="bi bi-mortarboard" style="margin-right: 8px;"></i>Faculty
+								</a></li>
+								<li><a href="{{ url_for('cases.major_cases_staff') }}">
+									<i class="bi bi-briefcase" style="margin-right: 8px;"></i>Staff
+								</a></li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon bi bi-calendar-check"></span
+						><span class="mtext">Complaints</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{ url_for('complaints.list_appointments') }}">Appointments</a></li>
+					</ul>
+				</li>
+					{% if current_user and current_user.is_admin() %}
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon bi bi-gear"></span
+						><span class="mtext">Settings</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{ url_for('settings.system_settings') }}">
+							<i class="bi bi-gear-fill" style="margin-right: 8px;"></i>System Settings
+						</a></li>
+						<li><a href="{{ url_for('settings.user_management') }}">
+							<i class="bi bi-people-fill" style="margin-right: 8px;"></i>User Management
+						</a></li>
+						<li><a href="{{ url_for('settings.reports') }}">
+							<i class="bi bi-file-earmark-bar-graph" style="margin-right: 8px;"></i>Reports
+						</a></li>
+					</ul>
+				</li>
+				{% endif %}
+			</ul>
+		</div>
+	</div>
+</div>

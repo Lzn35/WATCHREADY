@@ -1,0 +1,1411 @@
+{% extends "base.html" %}
+
+{% block title %}Minor Cases - Staff - WATCH
+<!-- Edit Person Modal -->
+<div class="modal fade" id="editPersonModal" tabindex="-1" role="dialog" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPersonModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Person Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editPersonForm">
+				<div class="modal-body">
+					<input type="hidden" id="editPersonId" name="person_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonFirstName">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonFirstName" name="first_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonLastName">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonLastName" name="last_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonProgram">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonProgram" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="updatePersonBtn">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Person
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Person Confirmation Modal -->
+<div class="modal fade" id="deletePersonModal" tabindex="-1" role="dialog" aria-labelledby="deletePersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletePersonModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Person
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deletePersonId" name="person_id">
+				<p>Are you sure you want to delete this person and all their cases?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the person and all associated cases.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeletePerson()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Person
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" role="dialog" aria-labelledby="editCaseModalLabel" aria-hidden="true" style="z-index: 1060;">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCaseModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Case Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editCaseForm">
+				<div class="modal-body">
+					<input type="hidden" id="editCaseId" name="case_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDate">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="editCaseDate" name="date" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDescription">Description</label>
+								<input type="text" class="form-control" id="editCaseDescription" name="description" maxlength="200">
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="editCaseRemarks">Remarks</label>
+						<textarea class="form-control" id="editCaseRemarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Case Confirmation Modal -->
+<div class="modal fade" id="deleteCaseModal" tabindex="-1" role="dialog" aria-labelledby="deleteCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteCaseModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deleteCaseId" name="case_id">
+				<p>Are you sure you want to delete this case?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the case record.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeleteCase()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+
+<style>
+/* Remove table row highlighting */
+.table tbody tr:hover {
+	background-color: transparent !important;
+}
+
+.table tbody tr:nth-child(even) {
+	background-color: transparent !important;
+}
+
+.table tbody tr:nth-child(odd) {
+	background-color: transparent !important;
+}
+
+/* Remove DataTables default styling */
+table.dataTable tbody tr:hover {
+	background-color: transparent !important;
+}
+
+table.dataTable tbody tr.odd {
+	background-color: transparent !important;
+}
+
+table.dataTable tbody tr.even {
+	background-color: transparent !important;
+}
+
+/* Custom dropdown styling for offense categories */
+.form-control.custom-select,
+select.custom-select {
+	border: 1px solid #dee2e6 !important;
+	border-radius: 0.375rem !important;
+	padding: 0.375rem 0.75rem !important;
+	background-color: #fff !important;
+	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
+	background-repeat: no-repeat !important;
+	background-position: right 0.75rem center !important;
+	background-size: 16px 12px !important;
+	appearance: none !important;
+	-webkit-appearance: none !important;
+	-moz-appearance: none !important;
+	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.form-control.custom-select:focus,
+select.custom-select:focus {
+	border-color: #80bdff !important;
+	outline: 0 !important;
+	box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.form-control.custom-select:disabled,
+select.custom-select:disabled {
+	background-color: #e9ecef !important;
+	opacity: 1 !important;
+}
+
+/* Enhanced dropdown options styling */
+.form-control.custom-select option,
+select.custom-select option {
+	padding: 8px 12px;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.form-control.custom-select option:hover,
+select.custom-select option:hover {
+	background-color: #f8f9fa;
+}
+
+.form-control.custom-select option:checked,
+select.custom-select option:checked {
+	background-color: #007bff;
+	color: white;
+}
+</style>
+
+<!-- Edit Person Modal -->
+<div class="modal fade" id="editPersonModal" tabindex="-1" role="dialog" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPersonModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Person Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editPersonForm">
+				<div class="modal-body">
+					<input type="hidden" id="editPersonId" name="person_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonFirstName">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonFirstName" name="first_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonLastName">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonLastName" name="last_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonProgram">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonProgram" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="updatePersonBtn">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Person
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Person Confirmation Modal -->
+<div class="modal fade" id="deletePersonModal" tabindex="-1" role="dialog" aria-labelledby="deletePersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletePersonModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Person
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deletePersonId" name="person_id">
+				<p>Are you sure you want to delete this person and all their cases?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the person and all associated cases.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeletePerson()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Person
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" role="dialog" aria-labelledby="editCaseModalLabel" aria-hidden="true" style="z-index: 1060;">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCaseModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Case Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editCaseForm">
+				<div class="modal-body">
+					<input type="hidden" id="editCaseId" name="case_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDate">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="editCaseDate" name="date" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDescription">Description</label>
+								<input type="text" class="form-control" id="editCaseDescription" name="description" maxlength="200">
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="editCaseRemarks">Remarks</label>
+						<textarea class="form-control" id="editCaseRemarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Case Confirmation Modal -->
+<div class="modal fade" id="deleteCaseModal" tabindex="-1" role="dialog" aria-labelledby="deleteCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteCaseModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deleteCaseId" name="case_id">
+				<p>Are you sure you want to delete this case?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the case record.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeleteCase()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-3">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-exclamation-circle" style="margin-right: 8px;"></i>
+				Minor Cases - Staff
+			</h4>
+		</div>
+	</div>
+	
+	<!-- Search and Actions Row -->
+	<div class="d-flex justify-content-between align-items-end mb-3" style="gap: 15px;">
+		<!-- Search Section -->
+		<div class="flex-grow-1" style="max-width: 300px;">
+			<div class="form-group mb-0">
+				<label for="searchInput" class="mb-1">Search name:</label>
+				<input type="text" class="form-control" id="searchInput" placeholder="Enter name to search...">
+			</div>
+		</div>
+		
+		<!-- Action Buttons -->
+		<div class="d-flex align-items-end" style="gap: 10px;">
+			<button class="btn btn-success" onclick="generateReport()">
+				<i class="bi bi-file-earmark-pdf" style="margin-right: 5px;"></i>Generate Report
+			</button>
+			<button class="btn btn-primary" data-toggle="modal" data-target="#addCaseModal">
+				<i class="bi bi-plus-circle" style="margin-right: 5px;"></i>Add Staff Case
+			</button>
+		</div>
+	</div>
+	
+	
+	<div class="table-responsive">
+		<table id="casesTable" class="table table-striped table-bordered" style="width:100%">
+			<thead>
+				<tr>
+					<th>Staff Name</th>
+					<th>Position</th>
+					<th>Minor Cases Count</th>
+					<th>Latest Case Date</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody id="personsTableBody">
+				<!-- Data will be loaded via JavaScript -->
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<!-- Add Case Modal -->
+<div class="modal fade" id="addCaseModal" tabindex="-1" role="dialog" aria-labelledby="addCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="addCaseModalLabel">
+					<i class="bi bi-plus-circle" style="margin-right: 8px;"></i>Add New Staff Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form method="POST" action="{{ url_for('cases.add_minor_case', entity_type='staff') }}">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+									<div class="modal-body">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="last_name">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="last_name" name="last_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="first_name">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="first_name" name="first_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="program_or_dept">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="program_or_dept" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="date">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="date" name="date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="offense_type">Offense Type <span class="text-danger">*</span></label>
+								<select class="form-control custom-select" id="offense_type" name="offense_type" required>
+									<option value="">Select Offense Type</option>
+									<option value="Decorum Violation">Decorum Violation</option>
+									<option value="Discourtesy">Discourtesy</option>
+									<option value="Improper Uniform">Improper Uniform</option>
+									<option value="Inappropriate Attire">Inappropriate Attire</option>
+									<option value="Lost/No ID">Lost/No ID</option>
+									<option value="Disrespect Symbols">Disrespect Symbols</option>
+									<option value="Misuse of Property">Misuse of Property</option>
+									<option value="Gambling">Gambling</option>
+									<option value="Unauthorized Classroom Use">Unauthorized Classroom Use</option>
+									<option value="Class Disruption">Class Disruption</option>
+									<option value="Affection Display">Affection Display</option>
+									<option value="Procedure Violation">Procedure Violation</option>
+									<option value="Possession of Vape">Possession of Vape</option>
+									<option value="Pets on Campus">Pets on Campus</option>
+								</select>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="description">Description</label>
+						<textarea class="form-control" id="description" name="description" rows="3" maxlength="500"></textarea>
+					</div>
+					<div class="form-group">
+						<label for="remarks">Remarks</label>
+						<textarea class="form-control" id="remarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Add Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modals -->
+{% for case in cases %}
+<div class="modal fade" id="editModal-{{ case.id }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel-{{ case.id }}" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editModalLabel-{{ case.id }}">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Staff Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form method="POST" action="{{ url_for('cases.edit_minor_case', case_id=case.id) }}">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+									<div class="modal-body">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="edit_last_name_{{ case.id }}">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="edit_last_name_{{ case.id }}" name="last_name" value="{{ case.last_name }}" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="edit_first_name_{{ case.id }}">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="edit_first_name_{{ case.id }}" name="first_name" value="{{ case.first_name }}" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="edit_program_or_dept_{{ case.id }}">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="edit_program_or_dept_{{ case.id }}" name="program_or_dept" value="{{ case.program_or_dept }}" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="edit_date_{{ case.id }}">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="edit_date_{{ case.id }}" name="date" value="{{ case.date.strftime('%Y-%m-%d') }}" max="{{ today }}" required>
+					</div>
+				</div>
+			</div>
+					<div class="form-group">
+						<label for="edit_remarks_{{ case.id }}">Remarks</label>
+						<textarea class="form-control" id="edit_remarks_{{ case.id }}" name="remarks" rows="3" maxlength="500">{{ case.remarks or '' }}</textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+{% endfor %}
+
+<!-- Delete Case Modals -->
+{% for case in cases %}
+<div class="modal fade" id="deleteModal-{{ case.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel-{{ case.id }}" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteModalLabel-{{ case.id }}">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<p>Are you sure you want to delete this staff case?</p>
+				<div class="alert alert-warning">
+					<strong>Staff:</strong> {{ case.first_name }} {{ case.last_name }}<br>
+					<strong>Position:</strong> {{ case.program_or_dept }}<br>
+					<strong>Date:</strong> {{ case.date.strftime('%Y-%m-%d') }}
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<form method="POST" action="{{ url_for('cases.delete_minor_case', case_id=case.id) }}" style="display: inline;">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+										<button type="submit" class="btn btn-danger">
+						<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+{% endfor %}
+
+<!-- Edit Person Modal -->
+<div class="modal fade" id="editPersonModal" tabindex="-1" role="dialog" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPersonModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Person Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editPersonForm">
+				<div class="modal-body">
+					<input type="hidden" id="editPersonId" name="person_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonFirstName">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonFirstName" name="first_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonLastName">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonLastName" name="last_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonProgram">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonProgram" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="updatePersonBtn">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Person
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Person Confirmation Modal -->
+<div class="modal fade" id="deletePersonModal" tabindex="-1" role="dialog" aria-labelledby="deletePersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletePersonModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Person
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deletePersonId" name="person_id">
+				<p>Are you sure you want to delete this person and all their cases?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the person and all associated cases.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeletePerson()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Person
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" role="dialog" aria-labelledby="editCaseModalLabel" aria-hidden="true" style="z-index: 1060;">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCaseModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Case Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editCaseForm">
+				<div class="modal-body">
+					<input type="hidden" id="editCaseId" name="case_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDate">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="editCaseDate" name="date" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDescription">Description</label>
+								<input type="text" class="form-control" id="editCaseDescription" name="description" maxlength="200">
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="editCaseRemarks">Remarks</label>
+						<textarea class="form-control" id="editCaseRemarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Case Confirmation Modal -->
+<div class="modal fade" id="deleteCaseModal" tabindex="-1" role="dialog" aria-labelledby="deleteCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteCaseModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deleteCaseId" name="case_id">
+				<p>Are you sure you want to delete this case?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the case record.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeleteCase()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- DataTables JS -->
+<script src="{{ url_for('static', filename='plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/dataTables.responsive.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/responsive.bootstrap4.min.js') }}"></script>
+
+<script>
+$(document).ready(function() {
+	// Check if the table exists before initializing DataTables
+	var tableElement = $('#casesTable');
+	if (tableElement.length > 0) {
+		try {
+			var table = tableElement.DataTable({
+				"responsive": true,
+				"paging": false, // Disable pagination
+				"info": false, // Hide info text
+				"lengthChange": false, // Hide "Show X entries" dropdown
+				"searching": false, // Disable built-in search
+				"ordering": false, // Disable all sorting completely
+				"language": {
+					"infoEmpty": "No cases available",
+					"infoFiltered": ""
+				}
+			});
+		} catch (error) {
+			console.log('DataTables initialization failed:', error);
+		}
+	} else {
+		console.log('Table #casesTable not found, skipping DataTables initialization');
+	}
+	
+	// Custom search functionality
+	var searchInput = $('#searchInput');
+	if (searchInput.length > 0) {
+		searchInput.on('keyup', function() {
+			var searchTerm = this.value.toLowerCase();
+			filterTable(searchTerm);
+		});
+	}
+	
+	// Set today's date as default for new cases
+	var dateInput = document.getElementById('date');
+	if (dateInput) {
+		dateInput.value = new Date().toISOString().split('T')[0];
+	}
+	
+});
+
+// Report Generation function
+function generateReport() {
+	// Get current date for filename
+	var today = new Date();
+	var dateStr = today.getFullYear() + '-' + 
+				  String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+				  String(today.getDate()).padStart(2, '0');
+	
+	// Create a simple HTML report
+	var reportContent = `
+		<html>
+		<head>
+			<title>Minor Cases - Staff Report</title>
+			<style>
+				body { font-family: Arial, sans-serif; margin: 20px; }
+				.header { text-align: center; margin-bottom: 30px; }
+				table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+				th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+				th { background-color: #f2f2f2; }
+			</style>
+		</head>
+		<body>
+			<div class="header">
+				<h1>Minor Cases - Staff Report</h1>
+				<p>Generated on: ${today.toLocaleDateString()} at ${today.toLocaleTimeString()}</p>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>Staff Name</th>
+						<th>Position</th>
+						<th>Date</th>
+						<th>Remarks</th>
+						<th>Created</th>
+					</tr>
+				</thead>
+				<tbody>
+	`;
+	
+	// Fetch actual case data from API
+	$.get('{{ url_for("cases.get_persons_api") }}?role=staff')
+		.done(function(persons) {
+			// Get all persons with minor cases
+			var personsWithCases = persons.filter(function(person) {
+				return person.minor_count > 0;
+			});
+			
+			// For each person, fetch their individual cases
+			var promises = personsWithCases.map(function(person) {
+				return $.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', person.id) + '?case_type=minor');
+			});
+			
+			Promise.all(promises).then(function(responses) {
+				// Add all cases to report
+				responses.forEach(function(response) {
+					if (response.cases && response.cases.length > 0) {
+						response.cases.forEach(function(case_item) {
+							if (case_item.case_type === 'minor') {
+								reportContent += '<tr>';
+								reportContent += '<td>' + response.person.full_name + '</td>';
+								reportContent += '<td>' + response.person.program_or_dept + '</td>';
+								reportContent += '<td>' + case_item.date_reported + '</td>';
+								reportContent += '<td>' + (case_item.remarks || '') + '</td>';
+								reportContent += '<td>' + case_item.created_at + '</td>';
+								reportContent += '</tr>';
+							}
+						});
+					}
+				});
+				
+				// Complete the report
+				reportContent += `
+					</tbody>
+				</table>
+			</body>
+			</html>
+		`;
+		
+		// Open report in new window for printing
+		var reportWindow = window.open('', '_blank');
+		reportWindow.document.write(reportContent);
+		reportWindow.document.close();
+		reportWindow.focus();
+		
+		// Auto-print after a short delay
+		setTimeout(function() {
+			reportWindow.print();
+		}, 500);
+			})
+			.fail(function() {
+				alert('Error loading case data for report');
+			});
+		});
+}
+
+// Load persons with case counts
+// Store original data for filtering
+var originalPersonsData = [];
+
+function loadPersonsWithCases() {
+	$.get('{{ url_for("cases.get_persons_api") }}?role=staff')
+		.done(function(data) {
+			originalPersonsData = data;
+			updatePersonsTable(data);
+		})
+		.fail(function() {
+			alert('Error loading persons data');
+		});
+}
+
+// Filter table based on search term
+function filterTable(searchTerm) {
+	console.log('filterTable called with:', searchTerm);
+	console.log('originalPersonsData:', originalPersonsData);
+	
+	if (!searchTerm) {
+		// If no search term, show all data
+		updatePersonsTable(originalPersonsData);
+		return;
+	}
+	
+	// Filter data based on staff name - only among those with minor cases
+	var filteredData = originalPersonsData.filter(function(person) {
+		var hasMinorCases = person.minor_count > 0;
+		var nameMatches = person.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+		var matches = hasMinorCases && nameMatches;
+		console.log('Checking:', person.full_name, 'against', searchTerm, 'hasMinorCases:', hasMinorCases, 'nameMatches:', nameMatches, 'total matches:', matches);
+		return matches;
+	});
+	
+	console.log('Filtered data:', filteredData);
+	updatePersonsTable(filteredData);
+}
+
+function updatePersonsTable(persons) {
+	var tableBody = $('#personsTableBody');
+	tableBody.empty();
+	
+	persons.forEach(function(person) {
+		// Only show persons with minor cases
+		if (person.minor_count > 0) {
+			var row = '<tr style="background-color: transparent !important;">' +
+				'<td><span class="person-name-clickable" style="cursor: pointer; color: #007bff; text-decoration: underline;" onclick="viewPersonCases(' + person.id + ')">' + person.full_name + '</span></td>' +
+				'<td>' + person.program_or_dept + '</td>' +
+				'<td><span style="color: #000; font-weight: bold;">' + person.minor_count + '</span></td>' +
+				'<td id="latest-date-' + person.id + '">-</td>' +
+				'<td>' +
+					'<button class="btn btn-sm btn-outline-warning" onclick="editPerson(' + person.id + ')" title="Edit Person" style="margin-right: 5px;">' +
+						'<i class="bi bi-pencil"></i>' +
+					'</button>' +
+					'<button class="btn btn-sm btn-outline-danger" onclick="deletePerson(' + person.id + ')" title="Delete Person">' +
+						'<i class="bi bi-trash"></i>' +
+					'</button>' +
+				'</td>' +
+				'</tr>';
+			tableBody.append(row);
+			
+		// Load latest case date
+		loadLatestCaseDate(person.id);
+		}
+	});
+}
+
+function loadLatestCaseDate(personId) {
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=minor')
+		.done(function(data) {
+			if (data.cases.length > 0) {
+				var latestCase = data.cases[0]; // Cases are ordered by date desc
+				$('#latest-date-' + personId).text(latestCase.date_reported);
+			}
+		});
+}
+
+function viewPersonCases(personId) {
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=minor')
+		.done(function(data) {
+			// Update modal title and person info
+			$('#personCasesModalLabel').html('<i class="bi bi-list-ul" style="margin-right: 8px;"></i>Minor Cases for ' + data.person.full_name);
+			
+			var personInfo = '<div class="card">' +
+				'<div class="card-body">' +
+				'<h6 class="card-title">' + data.person.full_name + '</h6>' +
+				'<p class="card-text">' +
+				'<strong>Position:</strong> ' + data.person.program_or_dept +
+				'</p>' +
+				'</div>' +
+				'</div>';
+			
+		$('#personInfo').html(personInfo).data('person-id', personId);
+		
+		// Update cases list
+		var casesHtml = '';
+			if (data.cases.length === 0) {
+				casesHtml = '<div class="text-center text-muted py-4">No minor cases found for this staff.</div>';
+			} else {
+								data.cases.forEach(function(case_item) {
+					if (case_item.case_type === 'minor') {
+						casesHtml += '<div class="card mb-2">' +
+							'<div class="card-body">' +
+							'<div class="d-flex justify-content-between align-items-start mb-2">' +
+							'<div>' +
+							'<p class="card-text mb-1"><strong>Date:</strong> ' + case_item.date_reported + '</p>' +
+							(case_item.offense_type ? '<p class="card-text mb-1"><strong>Specific Offense:</strong> ' + case_item.offense_type + '</p>' : '') +
+							(case_item.description ? '<p class="card-text mb-1"><strong>Description:</strong> ' + case_item.description + '</p>' : '') +
+							(case_item.remarks ? '<p class="card-text mb-1"><strong>Remarks:</strong> ' + case_item.remarks + '</p>' : '') +
+							'<small class="text-muted">Date Created: ' + case_item.created_at + '</small>' +
+							'</div>' +
+							'<div class="btn-group btn-group-sm" role="group">' +
+							'<button class="btn btn-outline-warning" onclick="editCaseInfo(' + case_item.id + ')" title="Edit Case">' +
+							'<i class="bi bi-pencil"></i>' +
+							'</button>' +
+							'<button class="btn btn-outline-danger" onclick="deleteCaseInfo(' + case_item.id + ')" title="Delete Case">' +
+							'<i class="bi bi-trash"></i>' +
+							'</button>' +
+							'</div>' +
+							'</div>' +
+							'</div>' +
+							'</div>';
+					}
+				});
+			}
+			
+			$('#casesList').html(casesHtml);
+			$('#personCasesModal').modal('show');
+		})
+		.fail(function() {
+			alert('Error loading person cases');
+		});
+}
+
+// Edit case info function (from modal)
+function editCaseInfo(caseId) {
+	// Get current case data and populate edit modal
+	$.get('{{ url_for("cases.get_case_api", case_id=0) }}'.replace('0', caseId))
+		.done(function(data) {
+			// Populate edit case modal
+			$('#editCaseDate').val(data.date_reported);
+			$('#editCaseDescription').val(data.description || '');
+			$('#editCaseRemarks').val(data.remarks || '');
+			$('#editCaseId').val(data.id);
+			
+			// Show edit modal
+			$('#editCaseModal').modal('show');
+		})
+		.fail(function(xhr) {
+			alert('Error loading case data');
+		});
+}
+
+// Delete case info function (from modal)
+function deleteCaseInfo(caseId) {
+	// Show delete confirmation modal
+	$('#deleteCaseId').val(caseId);
+	$('#deleteCaseModal').modal('show');
+}
+
+// Edit person function
+function editPerson(personId) {
+	// Get person data and populate edit modal
+	$.get('{{ url_for("cases.get_person_api", person_id=0) }}'.replace('0', personId))
+		.done(function(data) {
+			// Populate edit person modal
+			$('#editPersonId').val(data.id);
+			$('#editPersonFirstName').val(data.first_name || '');
+			$('#editPersonLastName').val(data.last_name || '');
+			$('#editPersonProgram').val(data.program_or_dept || '');
+			
+			// Show edit modal
+			$('#editPersonModal').modal('show');
+		})
+		.fail(function() {
+			alert('Error loading person data');
+		});
+}
+
+// Delete person function
+function deletePerson(personId) {
+	// Show delete confirmation modal
+	$('#deletePersonId').val(personId);
+	$('#deletePersonModal').modal('show');
+}
+
+// Confirm delete person function
+function confirmDeletePerson() {
+	var personId = $('#deletePersonId').val();
+	
+	$.post('{{ url_for("cases.delete_person_api") }}', { person_id: personId })
+		.done(function(response) {
+			$('#deletePersonModal').modal('hide');
+			// Show success message first
+			alert('Person and all associated cases deleted successfully!');
+			// Reload the main table to show updated data after a short delay
+			setTimeout(function() {
+				loadPersonsWithCases();
+			}, 500);
+		})
+		.fail(function() {
+			alert('Error deleting person');
+		});
+}
+
+// Function to submit the edit form (called by button click)
+function submitEditForm() {
+	var formData = $('#editCaseForm').serialize();
+	
+	// Add timestamp to prevent caching
+	var timestamp = new Date().getTime();
+	var url = '{{ url_for("cases.update_case_api") }}' + '?t=' + timestamp;
+	
+	$.post(url, formData)
+		.done(function(response) {
+			// Check if response indicates success
+			if (response.success === true || response.success === 'true') {
+				// Close edit modal first
+				$('#editCaseModal').modal('hide');
+				
+				// Wait for modal to close, then refresh the person cases modal
+				setTimeout(function() {
+					var currentPersonId = $('#personInfo').data('person-id');
+					console.log('Refreshing person cases for ID:', currentPersonId);
+					if (currentPersonId) {
+						viewPersonCases(currentPersonId);
+					}
+					// Reload the main table
+					loadPersonsWithCases();
+					// Show success message after refresh
+					alert('Case information updated successfully!');
+				}, 300);
+			} else {
+				alert('Update failed: ' + (response.error || 'Unknown error'));
+			}
+		})
+		.fail(function(xhr, status, error) {
+			alert('Network error: ' + error + ' (Status: ' + xhr.status + ')');
+		});
+}
+
+// Load data when page loads
+$(document).ready(function() {
+	loadPersonsWithCases();
+});
+
+$('#editPersonForm').on('submit', function(e) {
+	e.preventDefault();
+	var formData = $(this).serialize();
+	
+	$.post('{{ url_for("cases.update_person_api") }}', formData)
+		.done(function(response) {
+			$('#editPersonModal').modal('hide');
+			// Reload the persons table
+			loadPersonsWithCases();
+			// Show success message
+			alert('Person information updated successfully!');
+		})
+		.fail(function() {
+			alert('Error updating person information');
+		});
+});
+
+// Handle Update Person button click
+$(document).on('click', '#updatePersonBtn', function(e) {
+	e.preventDefault();
+	e.stopPropagation();
+	
+	console.log('Update Person button clicked!');
+	
+	// Get form data
+	var formData = $('#editPersonForm').serialize();
+	
+	console.log('Form data being sent:', formData);
+	console.log('URL:', '{{ url_for("cases.update_person_api") }}');
+	
+	$.post('{{ url_for("cases.update_person_api") }}', formData)
+		.done(function(response) {
+			console.log('Success response:', response);
+			$('#editPersonModal').modal('hide');
+			// Force page reload to ensure data is refreshed
+			location.reload();
+			// Show success message
+			alert('Person information updated successfully!');
+		})
+		.fail(function(xhr, status, error) {
+			console.log('Error response:', xhr.responseText);
+			console.log('Status:', status);
+			console.log('Error:', error);
+			alert('Error updating person information: ' + xhr.responseText);
+		});
+});
+</script>
+
+<!-- Person Cases Modal -->
+<div class="modal fade" id="personCasesModal" tabindex="-1" role="dialog" aria-labelledby="personCasesModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-xl" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="personCasesModalLabel">
+					<i class="bi bi-list-ul" style="margin-right: 8px;"></i>Minor Cases Details
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="personInfo" class="mb-3">
+					<!-- Person info will be loaded here -->
+				</div>
+				<div class="d-flex justify-content-between align-items-center mb-3">
+					<h6>Minor Cases</h6>
+				</div>
+				<div id="casesList" class="case-details">
+					<!-- Cases will be loaded here -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Person Modal -->
+<div class="modal fade" id="editPersonModal" tabindex="-1" role="dialog" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPersonModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Person Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editPersonForm">
+				<div class="modal-body">
+					<input type="hidden" id="editPersonId" name="person_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonFirstName">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonFirstName" name="first_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonLastName">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonLastName" name="last_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonProgram">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonProgram" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="updatePersonBtn">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Person
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Person Confirmation Modal -->
+<div class="modal fade" id="deletePersonModal" tabindex="-1" role="dialog" aria-labelledby="deletePersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletePersonModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Person
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deletePersonId" name="person_id">
+				<p>Are you sure you want to delete this person and all their cases?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the person and all associated cases.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeletePerson()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Person
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" role="dialog" aria-labelledby="editCaseModalLabel" aria-hidden="true" style="z-index: 1060;">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCaseModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Case Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editCaseForm">
+				<div class="modal-body">
+					<input type="hidden" id="editCaseId" name="case_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDate">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="editCaseDate" name="date" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDescription">Description</label>
+								<input type="text" class="form-control" id="editCaseDescription" name="description" maxlength="200">
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="editCaseRemarks">Remarks</label>
+						<textarea class="form-control" id="editCaseRemarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Case Confirmation Modal -->
+<div class="modal fade" id="deleteCaseModal" tabindex="-1" role="dialog" aria-labelledby="deleteCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteCaseModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deleteCaseId" name="case_id">
+				<p>Are you sure you want to delete this case?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the case record.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeleteCase()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

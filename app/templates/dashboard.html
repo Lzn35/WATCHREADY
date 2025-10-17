@@ -1,0 +1,663 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - WATCH{% endblock %}
+
+{% block extra_css %}
+<style>
+    .greeting-section {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+    .greeting-title {
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #6c757d;
+    }
+    .greeting-name {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 15px;
+        color: #1b00ff;
+    }
+    .greeting-description {
+        font-size: 1.1rem;
+        color: #495057;
+        font-weight: 400;
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+    .greeting-date {
+        font-size: 1rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .greeting-illustration {
+        text-align: center;
+        padding-left: 20px;
+    }
+    .greeting-illustration img {
+        max-width: 100%;
+        height: auto;
+        max-height: 200px;
+    }
+    @media (max-width: 767px) {
+        .greeting-illustration {
+            text-align: center;
+            padding: 0 0 20px 0;
+            order: -1;
+        }
+        .greeting-illustration img {
+            max-height: 150px;
+        }
+    }
+    .stats-card {
+        transition: transform 0.2s ease-in-out;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        position: relative;
+        padding: 20px;
+    }
+    .progress-circle {
+        transition: transform 0.2s ease-in-out;
+    }
+    .stats-card:hover .progress-circle {
+        transform: scale(1.05);
+    }
+    .analytics-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    /* Audit Log Styles */
+    .audit-log-container {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .audit-log-header {
+        background: linear-gradient(135deg, #1b00ff 0%, #667eea 100%);
+        color: white;
+        padding: 20px;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .audit-log-list {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .audit-log-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f1f3f4;
+        transition: background-color 0.2s ease;
+        animation: slideInFromTop 0.3s ease-out;
+    }
+    
+    .audit-log-item:last-child {
+        border-bottom: none;
+    }
+    
+    .audit-log-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .audit-log-timestamp {
+        font-size: 0.875rem;
+        color: #6c757d;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+    
+    .audit-log-action {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 4px 8px;
+        border-radius: 12px;
+        margin-bottom: 6px;
+        margin-right: 10px;
+    }
+    
+    .audit-log-action.created {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .audit-log-action.updated {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .audit-log-action.deleted {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .audit-log-action.confirmed {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .audit-log-action.viewed {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .audit-log-description {
+        font-size: 0.9rem;
+        color: #495057;
+        line-height: 1.4;
+        margin: 0;
+    }
+    
+    .audit-log-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    @keyframes slideInFromTop {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 767px) {
+        .audit-log-item {
+            padding: 12px 15px;
+        }
+        
+        .audit-log-timestamp {
+            font-size: 0.8rem;
+        }
+        
+        .audit-log-description {
+            font-size: 0.85rem;
+        }
+        
+        .audit-log-action {
+            font-size: 0.7rem;
+            padding: 3px 6px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Greeting Section (DeskApp Style 3 Welcome Banner) -->
+<div class="greeting-section">
+    <div class="row align-items-center">
+        <div class="col-md-4 greeting-illustration">
+            <img src="{{ url_for('static', filename='vendors/images/banner-img.png') }}" alt="Welcome Illustration" />
+        </div>
+        <div class="col-md-8 col-12">
+            <h4 class="greeting-title">Welcome back and <span id="greeting-text">Good Morning!</span></h4>
+            <p class="greeting-description">
+                Welcome to the WATCH Discipline Management System. Here you can monitor attendance, 
+                manage cases, track appointments, and oversee all disciplinary activities efficiently.
+            </p>
+            <p class="greeting-date" id="current-date">Monday, September 16, 2025</p>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards Row (3 Clean Cards) -->
+<div class="row pb-10">
+    <div class="col-xl-4 col-lg-4 col-md-6 mb-20">
+        <div class="card-box height-100-p widget-style1 stats-card">
+            <div class="d-flex flex-wrap align-items-center">
+                <div class="progress-data">
+                    <div class="progress-circle" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="dw dw-user-2" style="font-size: 32px; color: #667eea;"></i>
+                    </div>
+                </div>
+                <div class="widget-data">
+                    <div class="h4 mb-0">{{ attendance_today | default(0) }}</div>
+                    <div class="weight-600 font-14">Absent Today</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-4 col-md-6 mb-20">
+        <div class="card-box height-100-p widget-style1 stats-card">
+            <div class="d-flex flex-wrap align-items-center">
+                <div class="progress-data">
+                    <div class="progress-circle" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="dw dw-calendar1" style="font-size: 32px; color: #4facfe;"></i>
+                    </div>
+                </div>
+                <div class="widget-data">
+                    <div class="h4 mb-0">{{ appointments_total | default(0) }}</div>
+                    <div class="weight-600 font-14">Appointments</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-4 col-md-6 mb-20">
+        <div class="card-box height-100-p widget-style1 stats-card">
+            <div class="d-flex flex-wrap align-items-center">
+                <div class="progress-data">
+                    <div class="progress-circle" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="dw dw-folder" style="font-size: 32px; color: #fa709a;"></i>
+                    </div>
+                </div>
+                <div class="widget-data">
+                    <div class="h4 mb-0">{{ active_cases_total | default(0) }}</div>
+                    <div class="weight-600 font-14">Active Cases</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Section -->
+<div class="row">
+    <div class="col-xl-8 mb-30">
+        <div class="card-box height-100-p pd-20">
+            <h2 class="analytics-title">Top Offenses</h2>
+            <div class="chart-container" style="height: 400px;">
+                <canvas id="topOffensesChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 mb-30">
+        <div class="card-box height-100-p pd-20">
+            <h2 class="analytics-title">Cases by Severity</h2>
+            <div class="chart-container" style="height: 400px;">
+                <canvas id="caseSeverityChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log Section -->
+<div class="row">
+    <div class="col-xl-12 mb-30">
+        <div class="audit-log-container">
+            <h2 class="audit-log-header">
+                <i class="dw dw-analytics-5" style="margin-right: 10px;"></i>
+                Audit Log
+            </h2>
+            
+            {% if audit_logs and audit_logs|length > 0 %}
+            <ul class="audit-log-list">
+                {% for log in audit_logs[:5] %}
+                <li class="audit-log-item" data-log-id="{{ log.id }}">
+                    <div class="audit-log-timestamp">
+                        {{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else 'Unknown time' }}
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap">
+                        <span class="audit-log-action {{ log.action_type.lower() if log.action_type else 'viewed' }}">
+                            {% if log.action_type == 'Created' %}
+                                <i class="dw dw-add" style="margin-right: 4px; font-size: 10px;"></i>
+                            {% elif log.action_type == 'Updated' %}
+                                <i class="dw dw-edit2" style="margin-right: 4px; font-size: 10px;"></i>
+                            {% elif log.action_type == 'Deleted' %}
+                                <i class="dw dw-delete-3" style="margin-right: 4px; font-size: 10px;"></i>
+                            {% elif log.action_type == 'Confirmed' %}
+                                <i class="dw dw-checked" style="margin-right: 4px; font-size: 10px;"></i>
+                            {% else %}
+                                <i class="dw dw-eye" style="margin-right: 4px; font-size: 10px;"></i>
+                            {% endif %}
+                            {{ log.action_type or 'Viewed' }}
+                        </span>
+                    </div>
+                    <p class="audit-log-description">
+                        {{ log.description or 'No description available' }}
+                    </p>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="audit-log-empty">
+                <i class="dw dw-analytics-5" style="font-size: 48px; color: #dee2e6; margin-bottom: 15px; display: block;"></i>
+                No recent activities to display
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Dynamic Greeting and Date Update
+function updateGreeting() {
+    const now = new Date();
+    const hour = now.getHours();
+    const greetingElement = document.getElementById('greeting-text');
+    
+    let greeting;
+    if (hour < 12) {
+        greeting = "Good Morning!";
+    } else if (hour < 18) {
+        greeting = "Good Afternoon!";
+    } else {
+        greeting = "Good Evening!";
+    }
+    
+    greetingElement.textContent = greeting;
+}
+
+function updateDate() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    const dateString = now.toLocaleDateString('en-US', options);
+    document.getElementById('current-date').textContent = dateString;
+}
+
+// Initialize greeting and date
+updateGreeting();
+updateDate();
+
+// Update every minute
+setInterval(() => {
+    updateGreeting();
+    updateDate();
+}, 60000);
+
+// Chart.js Configuration
+document.addEventListener('DOMContentLoaded', function() {
+    // Cases by Severity Pie Chart
+    const severityCtx = document.getElementById('caseSeverityChart').getContext('2d');
+    const majorCases = parseInt('{{ major_cases | default(0) }}');
+    const minorCases = parseInt('{{ minor_cases | default(0) }}');
+    
+    new Chart(severityCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Major Cases', 'Minor Cases'],
+            datasets: [{
+                data: [majorCases, minorCases],
+                backgroundColor: [
+                    '#DC3545',  // Red for Major Cases
+                    '#2173D3'   // Blue for Minor Cases
+                ],
+                borderColor: [
+                    '#DC3545',  // Red for Major Cases
+                    '#2173D3'   // Blue for Minor Cases
+                ],
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            size: 12,
+                            weight: '500'
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    cornerRadius: 6,
+                    displayColors: true
+                }
+            },
+            animation: {
+                animateRotate: true,
+                duration: 1000
+            }
+        }
+    });
+
+    // Top Offenses Bar Chart
+    const offensesCtx = document.getElementById('topOffensesChart').getContext('2d');
+    const offensesLabels = JSON.parse('{{ offenses_labels | default(["No Data"]) | tojson | safe }}');
+    const offensesCounts = JSON.parse('{{ offenses_counts | default([0]) | tojson | safe }}');
+    
+    // Create categorical color palette for the bar chart
+    function getCategoricalColors(counts) {
+        const colors = [];
+        
+        // Categorical color palette - distinct, vibrant colors
+        const categoricalPalette = [
+            '#2173D3',  // Rich blue
+            '#00A896',  // Vibrant teal
+            '#4CAF50',  // Bright green
+            '#FFC107',  // Bright yellow
+            '#FF7F00',  // Vibrant orange
+            '#DC3545'   // Strong red
+        ];
+        
+        for (let i = 0; i < counts.length; i++) {
+            colors.push(categoricalPalette[i % categoricalPalette.length]);
+        }
+        
+        return colors;
+    }
+    
+    const categoricalColors = getCategoricalColors(offensesCounts);
+    
+    new Chart(offensesCtx, {
+        type: 'bar',
+        data: {
+            labels: offensesLabels,
+            datasets: [{
+                label: 'Number of Cases',
+                data: offensesCounts,
+                backgroundColor: categoricalColors,
+                borderColor: categoricalColors,
+                borderWidth: 2,
+                borderRadius: 4,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    cornerRadius: 6
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 11
+                        },
+                        maxRotation: 45
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+});
+
+// Audit Log Management
+class AuditLogManager {
+    constructor() {
+        this.maxEntries = 5;
+        this.logContainer = document.querySelector('.audit-log-list');
+        this.emptyState = document.querySelector('.audit-log-empty');
+        this.initializeWebSocket();
+    }
+    
+    // Add new log entry with LIFO behavior
+    addLogEntry(logData) {
+        if (!this.logContainer) return;
+        
+        // Hide empty state if visible
+        if (this.emptyState) {
+            this.emptyState.style.display = 'none';
+        }
+        
+        // Create new log item
+        const logItem = this.createLogItem(logData);
+        
+        // Add to top of list (LIFO)
+        this.logContainer.insertBefore(logItem, this.logContainer.firstChild);
+        
+        // Remove oldest entries if we exceed max
+        const items = this.logContainer.querySelectorAll('.audit-log-item');
+        if (items.length > this.maxEntries) {
+            for (let i = this.maxEntries; i < items.length; i++) {
+                items[i].style.animation = 'slideOutToBottom 0.3s ease-in';
+                setTimeout(() => {
+                    if (items[i] && items[i].parentNode) {
+                        items[i].remove();
+                    }
+                }, 300);
+            }
+        }
+    }
+    
+    // Create log item HTML
+    createLogItem(logData) {
+        const li = document.createElement('li');
+        li.className = 'audit-log-item';
+        li.setAttribute('data-log-id', logData.id || '');
+        
+        const actionClass = logData.action_type ? logData.action_type.toLowerCase() : 'viewed';
+        const iconMap = {
+            'created': 'dw-add',
+            'updated': 'dw-edit2',
+            'deleted': 'dw-delete-3',
+            'confirmed': 'dw-checked',
+            'viewed': 'dw-eye'
+        };
+        const icon = iconMap[actionClass] || 'dw-eye';
+        
+        li.innerHTML = `
+            <div class="audit-log-timestamp">
+                ${this.formatTimestamp(logData.timestamp)}
+            </div>
+            <div class="d-flex align-items-center flex-wrap">
+                <span class="audit-log-action ${actionClass}">
+                    <i class="dw ${icon}" style="margin-right: 4px; font-size: 10px;"></i>
+                    ${logData.action_type || 'Viewed'}
+                </span>
+            </div>
+            <p class="audit-log-description">
+                ${logData.description || 'No description available'}
+            </p>
+        `;
+        
+        return li;
+    }
+    
+    // Format timestamp for display
+    formatTimestamp(timestamp) {
+        if (!timestamp) return 'Unknown time';
+        
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+    
+    // Initialize WebSocket for real-time updates (optional)
+    initializeWebSocket() {
+        // This would connect to a WebSocket endpoint for real-time updates
+        // For now, we'll simulate with polling or manual updates
+        console.log('Audit Log Manager initialized');
+    }
+    
+    // NOTE: Demo random log generator removed for production reliability.
+}
+
+// Initialize Audit Log Manager
+document.addEventListener('DOMContentLoaded', function() {
+    window.auditLogManager = new AuditLogManager();
+    
+    // Real-time updates can be wired via WebSocket in the future.
+});
+
+// Add CSS animation for slide out
+const slideOutStyle = document.createElement('style');
+slideOutStyle.textContent = `
+    @keyframes slideOutToBottom {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+    }
+`;
+document.head.appendChild(slideOutStyle);
+</script>
+{% endblock %}

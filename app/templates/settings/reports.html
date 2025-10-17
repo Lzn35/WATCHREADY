@@ -1,0 +1,1005 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - WATCH{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-20">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-file-earmark-bar-graph" style="margin-right: 8px;"></i>
+				Reports
+			</h4>
+			<p class="mb-0 text-muted">Generate and download system reports</p>
+		</div>
+	</div>
+	
+	<div class="row">
+		<!-- Attendance Report -->
+		<div class="col-md-4 mb-20">
+			<div class="card h-100" style="border-top: 4px solid #17a2b8; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+				<div class="card-body text-center">
+					<div style="width: 80px; height: 80px; margin: 0 auto 15px; background: linear-gradient(135deg, #17a2b8, #138496); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+						<i class="bi bi-calendar-check" style="font-size: 36px; color: white;"></i>
+					</div>
+					<h5 class="font-weight-bold mb-2">Attendance Report</h5>
+					<p class="text-muted mb-3">Generate detailed attendance reports for faculty and staff</p>
+					<button class="btn btn-info btn-block" onclick="showAttendanceModal()">
+						<i class="bi bi-download" style="margin-right: 5px;"></i>
+						Generate Report
+					</button>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Appointments Report -->
+		<div class="col-md-4 mb-20">
+			<div class="card h-100" style="border-top: 4px solid #28a745; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+				<div class="card-body text-center">
+					<div style="width: 80px; height: 80px; margin: 0 auto 15px; background: linear-gradient(135deg, #28a745, #218838); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+						<i class="bi bi-calendar-event" style="font-size: 36px; color: white;"></i>
+					</div>
+					<h5 class="font-weight-bold mb-2">Appointments Report</h5>
+					<p class="text-muted mb-3">View and export appointment statistics and logs</p>
+					<button class="btn btn-success btn-block" onclick="showAppointmentsModal()">
+						<i class="bi bi-download" style="margin-right: 5px;"></i>
+						Generate Report
+					</button>
+				</div>
+			</div>
+		</div>
+		
+		<!-- System Logs -->
+		<div class="col-md-4 mb-20">
+			<div class="card h-100" style="border-top: 4px solid #ffc107; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+				<div class="card-body text-center">
+					<div style="width: 80px; height: 80px; margin: 0 auto 15px; background: linear-gradient(135deg, #ffc107, #e0a800); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+						<i class="bi bi-clock-history" style="font-size: 36px; color: white;"></i>
+					</div>
+					<h5 class="font-weight-bold mb-2">System Logs</h5>
+					<p class="text-muted mb-3">Access system activity logs and audit trails</p>
+					<button class="btn btn-warning btn-block" onclick="showSystemLogsModal()">
+						<i class="bi bi-eye" style="margin-right: 5px;"></i>
+						Generate Report
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Cases Reports Section -->
+	<div class="card mt-20">
+		<div class="card-header" style="background-color: #f8f9fa; border-bottom: 2px solid #dc3545;">
+			<h5 class="mb-0" style="color: #dc3545;">
+				<i class="bi bi-file-earmark-text" style="margin-right: 8px;"></i>
+				Cases Reports
+			</h5>
+		</div>
+		<div class="card-body">
+			<div class="row">
+				<div class="col-md-6 mb-3">
+					<div class="card border-left-primary">
+						<div class="card-body">
+							<div class="row no-gutters align-items-center">
+								<div class="col mr-2">
+									<div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Minor Cases Report</div>
+									<div class="h5 mb-0 font-weight-bold text-gray-800">Generate minor cases statistics</div>
+								</div>
+								<div class="col-auto">
+									<button class="btn btn-primary" onclick="showMinorCasesModal()">
+										<i class="bi bi-download"></i>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col-md-6 mb-3">
+					<div class="card border-left-danger">
+						<div class="card-body">
+							<div class="row no-gutters align-items-center">
+								<div class="col mr-2">
+									<div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Major Cases Report</div>
+									<div class="h5 mb-0 font-weight-bold text-gray-800">Generate major cases statistics</div>
+								</div>
+								<div class="col-auto">
+									<button class="btn btn-danger" onclick="showMajorCasesModal()">
+										<i class="bi bi-download"></i>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Recent Activity -->
+	<div class="card mt-20">
+		<div class="card-header" style="background-color: #f8f9fa;">
+			<h5 class="mb-0">
+				<i class="bi bi-activity" style="margin-right: 8px;"></i>
+				Recent Report Activities
+			</h5>
+		</div>
+		<div class="card-body">
+			<div class="list-group list-group-flush">
+				{% if recent_logs %}
+					{% for log in recent_logs %}
+					<div class="list-group-item d-flex justify-content-between align-items-center">
+						<div>
+							{% if log.action_type == 'Login' %}
+								<i class="bi bi-box-arrow-in-right text-success" style="margin-right: 10px;"></i>
+							{% elif log.action_type == 'Logout' %}
+								<i class="bi bi-box-arrow-right text-warning" style="margin-right: 10px;"></i>
+							{% else %}
+								<i class="bi bi-activity text-info" style="margin-right: 10px;"></i>
+							{% endif %}
+							<strong>{{ log.action_type }}</strong> - {{ log.description[:50] }}{% if log.description|length > 50 %}...{% endif %}
+						</div>
+						<small class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+					</div>
+					{% endfor %}
+				{% else %}
+					<div class="list-group-item text-center text-muted">
+						<i class="bi bi-info-circle" style="margin-right: 5px;"></i>
+						No recent activity found
+					</div>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Attendance Report Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-calendar-check" style="margin-right: 8px;"></i>
+					Attendance Report
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="attendanceForm">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">Start Date</label>
+								<input type="date" class="form-control" id="attendanceStartDate" name="start_date" max="{{ today }}" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">End Date</label>
+								<input type="date" class="form-control" id="attendanceEndDate" name="end_date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Export Format</label>
+						<select class="form-control" id="attendanceExportFormat" name="export_format">
+							<option value="excel">Excel (.xlsx)</option>
+							<option value="pdf">PDF (.pdf)</option>
+						</select>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-info" onclick="generateAttendanceReport()">
+					<i class="bi bi-download"></i> Generate Report
+				</button>
+			</div>
+		</div>
+	</div>
+					</div>
+					
+<!-- Appointments Report Modal -->
+<div class="modal fade" id="appointmentsModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-calendar-event" style="margin-right: 8px;"></i>
+					Appointments Report
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="appointmentsForm">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">Start Date</label>
+								<input type="date" class="form-control" id="appointmentsStartDate" name="start_date" max="{{ today }}" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">End Date</label>
+								<input type="date" class="form-control" id="appointmentsEndDate" name="end_date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+							<div class="form-group">
+								<label class="font-weight-bold">Export Format</label>
+								<select class="form-control" id="appointmentsExportFormat" name="export_format">
+									<option value="pdf">PDF (.pdf)</option>
+								</select>
+							</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-success" onclick="generateAppointmentsReport()">
+					<i class="bi bi-download"></i> Generate Report
+				</button>
+			</div>
+		</div>
+	</div>
+					</div>
+					
+<!-- System Logs Modal -->
+<div class="modal fade" id="systemLogsModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-clock-history" style="margin-right: 8px;"></i>
+					System Logs Report
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="systemLogsForm">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">Start Date</label>
+								<input type="date" class="form-control" id="systemLogsStartDate" name="start_date" max="{{ today }}" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">End Date</label>
+								<input type="date" class="form-control" id="systemLogsEndDate" name="end_date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+							<div class="form-group">
+								<label class="font-weight-bold">Export Format</label>
+								<select class="form-control" id="systemLogsExportFormat" name="export_format">
+									<option value="pdf">PDF (.pdf)</option>
+								</select>
+							</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-warning" onclick="generateSystemLogsReport()">
+					<i class="bi bi-download"></i> Generate Report
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Minor Cases Report Modal -->
+<div class="modal fade" id="minorCasesModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-file-earmark-text" style="margin-right: 8px;"></i>
+					Minor Cases Report
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+					</div>
+			<div class="modal-body">
+				<form id="minorCasesForm">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">Start Date</label>
+								<input type="date" class="form-control" id="minorCasesStartDate" name="start_date" max="{{ today }}" required>
+				</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">End Date</label>
+								<input type="date" class="form-control" id="minorCasesEndDate" name="end_date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Export Format</label>
+						<select class="form-control" id="minorCasesExportFormat" name="export_format">
+							<option value="excel">Excel (.xlsx)</option>
+							<option value="pdf">PDF (.pdf)</option>
+						</select>
+				</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-primary" onclick="generateMinorCasesReport()">
+					<i class="bi bi-download"></i> Generate Report
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Major Cases Report Modal -->
+<div class="modal fade" id="majorCasesModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-file-earmark-text" style="margin-right: 8px;"></i>
+					Major Cases Report
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="majorCasesForm">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">Start Date</label>
+								<input type="date" class="form-control" id="majorCasesStartDate" name="start_date" max="{{ today }}" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label class="font-weight-bold">End Date</label>
+								<input type="date" class="form-control" id="majorCasesEndDate" name="end_date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Export Format</label>
+						<select class="form-control" id="majorCasesExportFormat" name="export_format">
+							<option value="excel">Excel (.xlsx)</option>
+							<option value="pdf">PDF (.pdf)</option>
+						</select>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-danger" onclick="generateMajorCasesReport()">
+					<i class="bi bi-download"></i> Generate Report
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+<style>
+.border-left-primary {
+	border-left: 4px solid #007bff !important;
+}
+
+.border-left-danger {
+	border-left: 4px solid #dc3545 !important;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+</style>
+
+{% block extra_js %}
+<script>
+// Simple test to see if JavaScript is working
+console.log(' JavaScript is loading...');
+
+// Test if jQuery is available
+if (typeof $ !== 'undefined') {
+	console.log('[OK] jQuery is available');
+} else {
+	console.log('[ERROR] jQuery is NOT available');
+}
+
+// Define simple test function
+window.testFunction = function() {
+	console.log('OBJECTIVE: Test function called!');
+	alert('JavaScript is working!');
+}
+
+// Define modal functions with simple approach
+window.showAttendanceModal = function() {
+	console.log('showAttendanceModal called');
+	try {
+		if (typeof $ !== 'undefined') {
+			$('#attendanceModal').modal('show');
+			console.log('Modal show command executed');
+		} else {
+			console.error('jQuery not available');
+			alert('jQuery not available');
+		}
+	} catch (error) {
+		console.error('Error showing modal:', error);
+		alert('Error: ' + error.message);
+	}
+}
+
+window.showAppointmentsModal = function() {
+	console.log('showAppointmentsModal called');
+	try {
+		if (typeof $ !== 'undefined') {
+			$('#appointmentsModal').modal('show');
+		} else {
+			console.error('jQuery not available');
+		}
+	} catch (error) {
+		console.error('Error showing modal:', error);
+	}
+}
+
+window.showSystemLogsModal = function() {
+	console.log('showSystemLogsModal called');
+	try {
+		if (typeof $ !== 'undefined') {
+			$('#systemLogsModal').modal('show');
+		} else {
+			console.error('jQuery not available');
+		}
+	} catch (error) {
+		console.error('Error showing modal:', error);
+	}
+}
+
+window.showMinorCasesModal = function() {
+	console.log('showMinorCasesModal called');
+	try {
+		if (typeof $ !== 'undefined') {
+			$('#minorCasesModal').modal('show');
+		} else {
+			console.error('jQuery not available');
+		}
+	} catch (error) {
+		console.error('Error showing modal:', error);
+	}
+}
+
+window.showMajorCasesModal = function() {
+	console.log('showMajorCasesModal called');
+	try {
+		if (typeof $ !== 'undefined') {
+			$('#majorCasesModal').modal('show');
+		} else {
+			console.error('jQuery not available');
+		}
+	} catch (error) {
+		console.error('Error showing modal:', error);
+	}
+}
+
+// Real report generation functions
+window.generateAttendanceReport = function() {
+	console.log('generateAttendanceReport called');
+	
+	const startDate = document.getElementById('attendanceStartDate').value;
+	const endDate = document.getElementById('attendanceEndDate').value;
+	const format = document.getElementById('attendanceExportFormat').value;
+	
+	if (!startDate || !endDate) {
+		alert('Please select both start and end dates');
+		return;
+	}
+	
+	// Show loading
+	showAlert('Generating attendance report...', 'info');
+	
+	// Generate report
+	$.ajax({
+		url: `/settings/api/reports/attendance?start_date=${startDate}&end_date=${endDate}`,
+		method: 'GET',
+		success: function(response) {
+			if (response.success) {
+				downloadReportFile(response.report_data, format, 'attendance');
+				showAlert('Attendance report generated successfully!', 'success');
+			} else {
+				showAlert('Error: ' + response.error, 'error');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Error generating attendance report:', error);
+			showAlert('Error generating report: ' + error, 'error');
+		}
+	});
+	
+	// Close modal
+	$('#attendanceModal').modal('hide');
+}
+
+window.generateAppointmentsReport = function() {
+	console.log('generateAppointmentsReport called');
+	
+	const startDate = document.getElementById('appointmentsStartDate').value;
+	const endDate = document.getElementById('appointmentsEndDate').value;
+	const format = document.getElementById('appointmentsExportFormat').value;
+	
+	if (!startDate || !endDate) {
+		alert('Please select both start and end dates');
+		return;
+	}
+	
+	// Show loading
+	showAlert('Generating appointments report...', 'info');
+	
+	// Generate report
+	$.ajax({
+		url: `/settings/api/reports/appointments?start_date=${startDate}&end_date=${endDate}`,
+		method: 'GET',
+		success: function(response) {
+			if (response.success) {
+				downloadReportFile(response.report_data, format, 'appointments');
+				showAlert('Appointments report generated successfully!', 'success');
+			} else {
+				showAlert('Error: ' + response.error, 'error');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Error generating appointments report:', error);
+			showAlert('Error generating report: ' + error, 'error');
+		}
+	});
+	
+	// Close modal
+	$('#appointmentsModal').modal('hide');
+}
+
+window.generateSystemLogsReport = function() {
+	console.log('generateSystemLogsReport called');
+	
+	const startDate = document.getElementById('systemLogsStartDate').value;
+	const endDate = document.getElementById('systemLogsEndDate').value;
+	const format = document.getElementById('systemLogsExportFormat').value;
+	
+	if (!startDate || !endDate) {
+		alert('Please select both start and end dates');
+		return;
+	}
+	
+	// Show loading
+	showAlert('Generating system logs report...', 'info');
+	
+	// Generate report
+	$.ajax({
+		url: `/settings/api/reports/system-logs?start_date=${startDate}&end_date=${endDate}`,
+		method: 'GET',
+		success: function(response) {
+			if (response.success) {
+				downloadReportFile(response.report_data, format, 'system-logs');
+				showAlert('System logs report generated successfully!', 'success');
+			} else {
+				showAlert('Error: ' + response.error, 'error');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Error generating system logs report:', error);
+			showAlert('Error generating report: ' + error, 'error');
+		}
+	});
+	
+	// Close modal
+	$('#systemLogsModal').modal('hide');
+}
+
+window.generateMinorCasesReport = function() {
+	console.log('generateMinorCasesReport called');
+	
+	const startDate = document.getElementById('minorCasesStartDate').value;
+	const endDate = document.getElementById('minorCasesEndDate').value;
+	const format = document.getElementById('minorCasesExportFormat').value;
+	
+	if (!startDate || !endDate) {
+		alert('Please select both start and end dates');
+		return;
+	}
+	
+	// Show loading
+	showAlert('Generating minor cases report...', 'info');
+	
+	// Generate report
+	$.ajax({
+		url: `/settings/api/reports/cases?start_date=${startDate}&end_date=${endDate}&case_type=minor`,
+		method: 'GET',
+		success: function(response) {
+			if (response.success) {
+				downloadReportFile(response.report_data, format, 'minor-cases');
+				showAlert('Minor cases report generated successfully!', 'success');
+			} else {
+				showAlert('Error: ' + response.error, 'error');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Error generating minor cases report:', error);
+			showAlert('Error generating report: ' + error, 'error');
+		}
+	});
+	
+	// Close modal
+	$('#minorCasesModal').modal('hide');
+}
+
+window.generateMajorCasesReport = function() {
+	console.log('generateMajorCasesReport called');
+	
+	const startDate = document.getElementById('majorCasesStartDate').value;
+	const endDate = document.getElementById('majorCasesEndDate').value;
+	const format = document.getElementById('majorCasesExportFormat').value;
+	
+	if (!startDate || !endDate) {
+		alert('Please select both start and end dates');
+		return;
+	}
+	
+	// Show loading
+	showAlert('Generating major cases report...', 'info');
+	
+	// Generate report
+	$.ajax({
+		url: `/settings/api/reports/cases?start_date=${startDate}&end_date=${endDate}&case_type=major`,
+		method: 'GET',
+		success: function(response) {
+			if (response.success) {
+				downloadReportFile(response.report_data, format, 'major-cases');
+				showAlert('Major cases report generated successfully!', 'success');
+			} else {
+				showAlert('Error: ' + response.error, 'error');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error('Error generating major cases report:', error);
+			showAlert('Error generating report: ' + error, 'error');
+		}
+	});
+	
+	// Close modal
+	$('#majorCasesModal').modal('hide');
+}
+
+// Helper function to download report files
+window.downloadReportFile = function(reportData, format, reportType) {
+	console.log('downloadReportFile called:', reportType, format);
+	
+	if (format === 'excel') {
+		downloadExcel(reportData, reportType);
+	} else if (format === 'pdf') {
+		downloadPDF(reportData, reportType);
+	}
+}
+
+// Excel download function
+window.downloadExcel = function(reportData, reportType) {
+	console.log('downloadExcel called for:', reportType);
+	
+	// Create CSV content
+	let csvContent = '';
+	
+	// Add header
+	csvContent += `${reportData.title}\n`;
+	csvContent += `Period: ${reportData.period}\n`;
+	csvContent += `Generated: ${reportData.generated_at}\n`;
+	csvContent += `Total Records: ${reportData.total_records || reportData.total_appointments || reportData.total_logs || reportData.total_cases}\n\n`;
+	
+	// Add data based on report type
+	if (reportType === 'attendance') {
+		csvContent += 'Date,Faculty Name,Subject,Time Slot,Room,Status,Created At\n';
+		reportData.records.forEach(record => {
+			csvContent += `"${record.date}","${record.faculty_name}","${record.subject}","${record.time_slot}","${record.room}","${record.status}","${record.created_at}"\n`;
+		});
+	} else if (reportType === 'appointments') {
+		csvContent += 'ID,Full Name,Email,Appointment Date,Type,Description,Status,Created At\n';
+		reportData.appointments.forEach(appointment => {
+			csvContent += `"${appointment.id}","${appointment.full_name}","${appointment.email}","${appointment.appointment_date}","${appointment.appointment_type}","${appointment.appointment_description}","${appointment.status}","${appointment.created_at}"\n`;
+		});
+	} else if (reportType === 'system-logs') {
+		csvContent += 'ID,Timestamp,Action Type,Description,Username,IP Address,User Agent\n';
+		reportData.logs.forEach(log => {
+			csvContent += `"${log.id}","${log.timestamp}","${log.action_type}","${log.description}","${log.username}","${log.ip_address}","${log.user_agent}"\n`;
+		});
+	} else if (reportType === 'minor-cases' || reportType === 'major-cases') {
+		csvContent += 'ID,Case Number,Person Name,Role,Offense Type,Description,Status,Created At,Updated At\n';
+		
+		// Add cases by role
+		['students', 'faculty', 'staff'].forEach(role => {
+			if (reportData.cases[role] && reportData.cases[role].length > 0) {
+				csvContent += `\n--- ${role.toUpperCase()} CASES ---\n`;
+				reportData.cases[role].forEach(case_item => {
+					csvContent += `"${case_item.id}","${case_item.case_number}","${case_item.person_name}","${case_item.person_role}","${case_item.offense_type || 'N/A'}","${case_item.description}","${case_item.status}","${case_item.created_at}","${case_item.updated_at}"\n`;
+				});
+			}
+		});
+	}
+	
+	// Download CSV file
+	const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+	const link = document.createElement('a');
+	const url = URL.createObjectURL(blob);
+	link.setAttribute('href', url);
+	link.setAttribute('download', `${reportType}_report_${new Date().toISOString().split('T')[0]}.csv`);
+	link.style.visibility = 'hidden';
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+}
+
+// PDF download function - Create real PDF using jsPDF
+window.downloadPDF = function(reportData, reportType) {
+	console.log('downloadPDF called for:', reportType);
+	
+	// Import jsPDF dynamically
+	const script = document.createElement('script');
+	script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+	script.onload = function() {
+		createPDF(reportData, reportType);
+	};
+	document.head.appendChild(script);
+}
+
+window.createPDF = function(reportData, reportType) {
+	const { jsPDF } = window.jspdf;
+	const doc = new jsPDF();
+	
+	// Set font
+	doc.setFont('helvetica');
+	
+	// Add title - match the exact format from Minor Cases
+	doc.setFontSize(16);
+	doc.text(reportData.title, 20, 20);
+	
+	// Add generation timestamp - match the exact format
+	doc.setFontSize(10);
+	const now = new Date();
+	const timestamp = now.toLocaleDateString('en-US') + ' at ' + now.toLocaleTimeString('en-US');
+	doc.text(`Generated on: ${timestamp}`, 20, 30);
+	
+	let yPosition = 45;
+	
+	// Add data based on report type - match Minor Cases table format
+	if (reportType === 'attendance') {
+		// Headers - match Minor Cases format
+		doc.setFontSize(10);
+		doc.setFont(undefined, 'bold');
+		doc.text('Faculty Name', 20, yPosition);
+		doc.text('Subject', 60, yPosition);
+		doc.text('Time Slot', 100, yPosition);
+		doc.text('Room', 130, yPosition);
+		doc.text('Date', 150, yPosition);
+		doc.text('Status', 170, yPosition);
+		yPosition += 8;
+		
+		// Data rows
+		doc.setFont(undefined, 'normal');
+		doc.setFontSize(9);
+		reportData.records.forEach(record => {
+			if (yPosition > 280) {
+				doc.addPage();
+				yPosition = 20;
+			}
+			doc.text(record.faculty_name, 20, yPosition);
+			doc.text(record.subject, 60, yPosition);
+			doc.text(record.time_slot, 100, yPosition);
+			doc.text(record.room, 130, yPosition);
+			doc.text(record.date, 150, yPosition);
+			doc.text(record.status, 170, yPosition);
+			yPosition += 6;
+		});
+		
+	} else if (reportType === 'appointments') {
+		// Headers - match Minor Cases format
+		doc.setFontSize(10);
+		doc.setFont(undefined, 'bold');
+		doc.text('Full Name', 20, yPosition);
+		doc.text('Email', 60, yPosition);
+		doc.text('Type', 100, yPosition);
+		doc.text('Date', 120, yPosition);
+		doc.text('Description', 150, yPosition);
+		yPosition += 8;
+		
+		// Data rows
+		doc.setFont(undefined, 'normal');
+		doc.setFontSize(9);
+		reportData.appointments.forEach(appointment => {
+			if (yPosition > 280) {
+				doc.addPage();
+				yPosition = 20;
+			}
+			doc.text(appointment.full_name, 20, yPosition);
+			doc.text(appointment.email, 60, yPosition);
+			doc.text(appointment.appointment_type, 100, yPosition);
+			doc.text(appointment.appointment_date.split(' ')[0], 120, yPosition); // Date only
+			doc.text(appointment.appointment_description.substring(0, 20), 150, yPosition);
+			yPosition += 6;
+		});
+		
+	} else if (reportType === 'system-logs') {
+		// Headers - match Minor Cases format
+		doc.setFontSize(10);
+		doc.setFont(undefined, 'bold');
+		doc.text('Username', 20, yPosition);
+		doc.text('Action Type', 60, yPosition);
+		doc.text('Description', 100, yPosition);
+		doc.text('Date', 150, yPosition);
+		yPosition += 8;
+		
+		// Data rows
+		doc.setFont(undefined, 'normal');
+		doc.setFontSize(9);
+		reportData.logs.forEach(log => {
+			if (yPosition > 280) {
+				doc.addPage();
+				yPosition = 20;
+			}
+			doc.text(log.username, 20, yPosition);
+			doc.text(log.action_type, 60, yPosition);
+			doc.text(log.description.substring(0, 25), 100, yPosition);
+			doc.text(log.timestamp.split(' ')[0], 150, yPosition); // Date only
+			yPosition += 6;
+		});
+		
+	} else if (reportType === 'minor-cases' || reportType === 'major-cases') {
+		// Use the exact same format as Minor Cases reports
+		// Add cases by role - Students, Faculty, Staff
+		['students', 'faculty', 'staff'].forEach(role => {
+			if (reportData.cases[role] && reportData.cases[role].length > 0) {
+				// Role header
+				doc.setFontSize(12);
+				doc.setFont(undefined, 'bold');
+				doc.text(`${reportType.toUpperCase().replace('-', ' ')} - ${role.toUpperCase()} Report`, 20, yPosition);
+				yPosition += 10;
+				
+				// Headers - correct format for each role with Offense Type
+				doc.setFontSize(10);
+				doc.setFont(undefined, 'bold');
+				if (role === 'students') {
+					doc.text('Student Name', 15, yPosition);
+					doc.text('Course', 50, yPosition);
+					doc.text('Section', 80, yPosition);
+					doc.text('Offense Type', 110, yPosition);
+					doc.text('Date', 150, yPosition);
+					doc.text('Remarks', 170, yPosition);
+				} else if (role === 'faculty') {
+					doc.text('Faculty Name', 15, yPosition);
+					doc.text('Department', 50, yPosition);
+					doc.text('Offense Type', 90, yPosition);
+					doc.text('Date', 130, yPosition);
+					doc.text('Remarks', 150, yPosition);
+				} else if (role === 'staff') {
+					doc.text('Staff Name', 15, yPosition);
+					doc.text('Position', 50, yPosition);
+					doc.text('Offense Type', 90, yPosition);
+					doc.text('Date', 130, yPosition);
+					doc.text('Remarks', 150, yPosition);
+				}
+				yPosition += 8;
+				
+				// Data rows
+				doc.setFont(undefined, 'normal');
+				doc.setFontSize(9);
+				reportData.cases[role].forEach(case_item => {
+					if (yPosition > 280) {
+						doc.addPage();
+						yPosition = 20;
+					}
+					if (role === 'students') {
+						doc.text(case_item.person_name, 15, yPosition);
+						doc.text(case_item.program_or_dept || 'N/A', 50, yPosition); // Course
+						doc.text(case_item.section_or_position || 'N/A', 80, yPosition); // Section
+						doc.text(case_item.offense_type || 'N/A', 110, yPosition); // Offense Type
+						doc.text(case_item.date_reported, 150, yPosition);
+						doc.text(case_item.remarks || 'N/A', 170, yPosition);
+					} else if (role === 'faculty') {
+						doc.text(case_item.person_name, 15, yPosition);
+						doc.text(case_item.program_or_dept || 'N/A', 50, yPosition); // Department
+						doc.text(case_item.offense_type || 'N/A', 90, yPosition); // Offense Type
+						doc.text(case_item.date_reported, 130, yPosition);
+						doc.text(case_item.remarks || 'N/A', 150, yPosition);
+					} else if (role === 'staff') {
+						doc.text(case_item.person_name, 15, yPosition);
+						doc.text(case_item.program_or_dept || 'N/A', 50, yPosition); // Position
+						doc.text(case_item.offense_type || 'N/A', 90, yPosition); // Offense Type
+						doc.text(case_item.date_reported, 130, yPosition);
+						doc.text(case_item.remarks || 'N/A', 150, yPosition);
+					}
+					yPosition += 6;
+				});
+				yPosition += 10; // Space between role sections
+			}
+		});
+	}
+	
+	// Save the PDF with proper filename
+	const filename = `${reportData.title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+	doc.save(filename);
+	showAlert('PDF report generated successfully!', 'success');
+}
+
+// Alert function
+window.showAlert = function(message, type = 'info') {
+	const alertClass = type === 'error' ? 'alert-danger' : 
+					   type === 'success' ? 'alert-success' : 'alert-info';
+	
+	const alertHtml = `
+		<div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+			${message}
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+	`;
+	
+	// Prepend to container
+	const container = document.querySelector('.container-fluid');
+	if (container) {
+		container.insertAdjacentHTML('afterbegin', alertHtml);
+		
+		// Auto-hide after 3 seconds
+		setTimeout(() => {
+			const alert = container.querySelector('.alert');
+			if (alert) {
+				alert.remove();
+			}
+		}, 3000);
+	}
+}
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+	console.log(' DOM is ready');
+	
+	// Check if jQuery is available after DOM is ready
+	if (typeof $ !== 'undefined') {
+		console.log('[OK] jQuery is available after DOM ready');
+		console.log('jQuery version:', $.fn.jquery);
+	} else {
+		console.log('[ERROR] jQuery is still not available after DOM ready');
+	}
+	
+	// Check if modals exist
+	const modals = ['attendanceModal', 'appointmentsModal', 'systemLogsModal', 'minorCasesModal', 'majorCasesModal'];
+	modals.forEach(modalId => {
+		const exists = document.getElementById(modalId) !== null;
+		console.log(`Modal ${modalId} exists:`, exists);
+	});
+	
+	console.log('[OK] Simple initialization complete');
+});
+
+console.log(' JavaScript loaded successfully');
+</script>
+{% endblock %}

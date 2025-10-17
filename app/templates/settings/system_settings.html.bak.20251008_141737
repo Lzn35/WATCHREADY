@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - WATCH{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-20">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-gear-fill" style="margin-right: 8px;"></i>
+				System Settings
+			</h4>
+			<p class="mb-0 text-muted">Configure general system settings and preferences</p>
+		</div>
+	</div>
+	
+	<div class="row">
+		<div class="col-md-8">
+			<div class="card">
+				<div class="card-header" style="background-color: #f8f9fa; border-bottom: 2px solid #007bff;">
+					<h5 class="mb-0" style="color: #007bff;">
+						<i class="bi bi-sliders" style="margin-right: 8px;"></i>
+						General Settings
+					</h5>
+				</div>
+				<div class="card-body">
+					<form id="systemSettingsForm" method="POST" action="{{ url_for('settings.save_system_settings') }}">
+											<div class="form-group">
+							<label class="font-weight-bold" for="systemName">
+								<i class="bi bi-app-indicator" style="margin-right: 5px; color: #007bff;"></i>
+								System Name
+							</label>
+							<input type="text" class="form-control" id="systemName" name="system_name" 
+								   value="{{ system_settings.system_name }}" placeholder="Enter system name" required />
+							<small class="form-text text-muted">This name appears in the header and login page</small>
+						</div>
+						
+						<div class="form-group">
+							<label class="font-weight-bold" for="schoolName">
+								<i class="bi bi-building" style="margin-right: 5px; color: #007bff;"></i>
+								School Name
+							</label>
+							<input type="text" class="form-control" id="schoolName" name="school_name" 
+								   value="{{ system_settings.school_name }}" placeholder="Enter school name" required />
+							<small class="form-text text-muted">Official name of your institution</small>
+						</div>
+						
+						<div class="form-group">
+							<label class="font-weight-bold" for="academicYear">
+								<i class="bi bi-calendar-range" style="margin-right: 5px; color: #007bff;"></i>
+								Academic Year
+							</label>
+							<input type="text" class="form-control" id="academicYear" name="academic_year" 
+								   value="{{ system_settings.academic_year }}" placeholder="e.g., 2024-2025" required />
+							<small class="form-text text-muted">Current academic year for reports and records</small>
+						</div>
+						
+						<hr>
+						
+						<div class="form-group mb-0">
+							<button type="submit" class="btn btn-primary" id="saveSystemSettings">
+								<i class="bi bi-save" style="margin-right: 5px;"></i>
+								Save Changes
+							</button>
+							<button type="button" class="btn btn-secondary ml-2" onclick="resetSystemForm()">
+								<i class="bi bi-arrow-counterclockwise" style="margin-right: 5px;"></i>
+								Reset
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+		
+		<div class="col-md-4">
+			<div class="card bg-light">
+				<div class="card-body">
+					<h6 class="font-weight-bold mb-3">
+						<i class="bi bi-info-circle" style="margin-right: 5px; color: #17a2b8;"></i>
+						Quick Info
+					</h6>
+					<p class="mb-2"><strong>System Name:</strong> {{ system_settings.system_name }}</p>
+					<p class="mb-2"><strong>School:</strong> {{ system_settings.school_name }}</p>
+					<p class="mb-2"><strong>Academic Year:</strong> {{ system_settings.academic_year }}</p>
+					<p class="mb-2"><strong>System Version:</strong> 1.0.0</p>
+					<p class="mb-2"><strong>Database:</strong> SQLite</p>
+					<p class="mb-2"><strong>Last Updated:</strong> {{ system_settings.updated_at.strftime('%B %d, %Y') if system_settings.updated_at else 'Never' }}</p>
+					<hr>
+					<p class="text-muted small mb-0">
+						<i class="bi bi-shield-check" style="margin-right: 5px;"></i>
+						These settings are protected and require admin privileges to modify.
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Email Configuration Section -->
+	<div class="row mt-30">
+		<div class="col-md-12">
+			<div class="card">
+				<div class="card-header" style="background-color: #f8f9fa; border-bottom: 2px solid #28a745;">
+					<h5 class="mb-0" style="color: #28a745;">
+						<i class="bi bi-envelope-fill" style="margin-right: 8px;"></i>
+						Email Configuration
+					</h5>
+					<small class="text-muted">Configure email settings for sending appointment notifications</small>
+				</div>
+				<div class="card-body">
+					<form id="emailSettingsForm" method="POST" action="{{ url_for('settings.save_email_settings') }}">
+											<div class="row">
+							<div class="col-md-6">
+								<div class="custom-control custom-switch mb-3">
+									<input type="checkbox" class="custom-control-input" id="emailEnabled" name="enabled" {% if email_settings.enabled %}checked{% endif %}>
+									<label class="custom-control-label font-weight-bold" for="emailEnabled">
+										<i class="bi bi-toggle-on" style="margin-right: 5px;"></i>
+										Enable Email Sending
+									</label>
+									<small class="form-text text-muted">Turn this on to send actual emails to students</small>
+								</div>
+								
+								<div class="form-group">
+									<label class="font-weight-bold">
+										<i class="bi bi-cloud" style="margin-right: 5px; color: #28a745;"></i>
+										Email Provider
+									</label>
+									<select class="form-control" name="provider" id="emailProvider">
+										<option value="gmail" {% if email_settings.provider == 'gmail' %}selected{% endif %}>Gmail</option>
+										<option value="outlook" {% if email_settings.provider == 'outlook' %}selected{% endif %}>Outlook / Microsoft 365</option>
+									</select>
+									<small class="form-text text-muted">Choose your email service provider</small>
+								</div>
+								
+								<div class="form-group">
+									<label class="font-weight-bold">
+										<i class="bi bi-envelope" style="margin-right: 5px; color: #28a745;"></i>
+										Sender Email Address
+									</label>
+									<input type="email" class="form-control" name="sender_email" id="senderEmail" 
+										   value="{{ email_settings.sender_email or '' }}" 
+										   placeholder="your.email@school.edu.ph" 
+										   autocomplete="off"
+										   style="background-color: white !important; z-index: 1;">
+									<small class="form-text text-muted">The email address that will send the notifications</small>
+								</div>
+								
+								<div class="form-group">
+									<label class="font-weight-bold">
+										<i class="bi bi-key" style="margin-right: 5px; color: #28a745;"></i>
+										App Password
+									</label>
+									<input type="password" class="form-control" name="sender_password" id="senderPassword" 
+										   placeholder="Enter app password" 
+										   autocomplete="new-password"
+										   style="background-color: white !important; z-index: 1;">
+									<small class="form-text text-muted">
+										<span id="gmailPasswordHelp" style="display: {% if email_settings.provider == 'gmail' %}inline{% else %}none{% endif %};">
+											Enter your Gmail App Password (16 characters). If you don't have one, follow the setup instructions.
+										</span>
+										<span id="outlookPasswordHelp" style="display: {% if email_settings.provider == 'outlook' %}inline{% else %}none{% endif %};">
+											Enter your Outlook App Password. If you don't have one, follow the setup instructions.
+										</span>
+									</small>
+									<div class="mt-2">
+										<small class="text-info">
+											<i class="bi bi-info-circle"></i>
+											<span id="currentPasswordStatus">
+												{% if email_settings.provider == 'gmail' %}
+													{% if email_settings.gmail_password %}
+														✅ Gmail password is saved
+													{% else %}
+														⚠️ No Gmail password saved
+													{% endif %}
+												{% elif email_settings.provider == 'outlook' %}
+													{% if email_settings.outlook_password %}
+														✅ Outlook password is saved
+													{% else %}
+														⚠️ No Outlook password saved
+													{% endif %}
+												{% endif %}
+											</span>
+										</small>
+									</div>
+								</div>
+								
+								<div class="form-group">
+									<label class="font-weight-bold">
+										<i class="bi bi-person" style="margin-right: 5px; color: #28a745;"></i>
+										Sender Display Name
+									</label>
+									<input type="text" class="form-control" name="sender_name" id="senderName"
+										   value="{{ email_settings.sender_name }}" 
+										   placeholder="Discipline Office"
+										   autocomplete="off"
+										   style="background-color: white !important; z-index: 1;">
+									<small class="form-text text-muted">Name that appears as the email sender</small>
+								</div>
+								
+								<hr>
+								
+								<button type="submit" class="btn btn-success">
+									<i class="bi bi-save" style="margin-right: 5px;"></i>
+									Save Email Settings
+								</button>
+								<button type="button" class="btn btn-info ml-2" onclick="testEmailConnection()">
+									<i class="bi bi-send-check" style="margin-right: 5px;"></i>
+									Test Connection
+								</button>
+							</div>
+							
+							<div class="col-md-6">
+								<div class="card bg-light border-success">
+									<div class="card-body">
+										<h6 class="font-weight-bold mb-3 text-success">
+											<i class="bi bi-info-circle-fill" style="margin-right: 5px;"></i>
+											Setup Instructions
+										</h6>
+										
+										<div id="gmailInstructions" style="display: {% if email_settings.provider == 'gmail' %}block{% else %}none{% endif %};">
+											<p class="font-weight-bold mb-2">📧 Gmail Setup:</p>
+											<ol class="small mb-3" style="line-height: 1.8;">
+												<li>Go to <a href="https://myaccount.google.com/security" target="_blank">Google Account Security</a></li>
+												<li>Enable <strong>2-Step Verification</strong></li>
+												<li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank">App Passwords</a></li>
+												<li>Generate password for "Mail"</li>
+												<li>Copy the 16-character password</li>
+												<li>Paste it in the "App Password" field above</li>
+											</ol>
+										</div>
+										
+										<div id="outlookInstructions" style="display: {% if email_settings.provider == 'outlook' %}block{% else %}none{% endif %};">
+											<p class="font-weight-bold mb-2">📨 Outlook Setup:</p>
+											<ol class="small mb-3" style="line-height: 1.8;">
+												<li>Go to <a href="https://account.microsoft.com/security" target="_blank">Microsoft Account Security</a></li>
+												<li>Enable <strong>Two-step verification</strong></li>
+												<li>Go to <a href="https://account.live.com/proofs/AppPassword" target="_blank">App Passwords</a></li>
+												<li>Generate a new app password</li>
+												<li>Copy the password</li>
+												<li>Paste it in the "App Password" field above</li>
+											</ol>
+										</div>
+										
+										<div class="alert alert-warning small mb-0">
+											<i class="bi bi-shield-exclamation" style="margin-right: 5px;"></i>
+											<strong>Important:</strong> Use App Password, NOT your regular email password!
+										</div>
+									</div>
+								</div>
+								
+								<div class="card bg-light border-info mt-3">
+									<div class="card-body">
+										<h6 class="font-weight-bold mb-2 text-info">
+											<i class="bi bi-check-circle-fill" style="margin-right: 5px;"></i>
+											Current Status
+										</h6>
+										<p class="mb-2">
+											<strong>Email Enabled:</strong> 
+											<span class="badge badge-{% if email_settings.enabled %}success{% else %}secondary{% endif %}">
+												{% if email_settings.enabled %}Yes{% else %}No{% endif %}
+											</span>
+										</p>
+										<p class="mb-2">
+											<strong>Provider:</strong> 
+											<span class="badge badge-primary">{{ email_settings.provider|capitalize }}</span>
+										</p>
+										<p class="mb-0">
+											<strong>Configured:</strong> 
+											<span class="badge badge-{% if email_settings.is_configured() %}success{% else %}warning{% endif %}">
+												{% if email_settings.is_configured() %}Ready{% else %}Not Configured{% endif %}
+											</span>
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+// Toggle instructions based on provider selection
+document.getElementById('emailProvider').addEventListener('change', function() {
+	const provider = this.value;
+	
+	// Toggle instructions
+	document.getElementById('gmailInstructions').style.display = provider === 'gmail' ? 'block' : 'none';
+	document.getElementById('outlookInstructions').style.display = provider === 'outlook' ? 'block' : 'none';
+	
+	// Toggle password help text
+	document.getElementById('gmailPasswordHelp').style.display = provider === 'gmail' ? 'inline' : 'none';
+	document.getElementById('outlookPasswordHelp').style.display = provider === 'outlook' ? 'inline' : 'none';
+	
+	// Update password status
+	updatePasswordStatus(provider);
+});
+
+// Function to update password status based on provider
+function updatePasswordStatus(provider) {
+	const statusElement = document.getElementById('currentPasswordStatus');
+	
+	// Make AJAX request to get current password status
+	$.ajax({
+		url: '{{ url_for("settings.get_password_status") }}',
+		method: 'GET',
+		data: { provider: provider },
+		success: function(response) {
+			if (response.has_password) {
+				statusElement.innerHTML = `✅ ${provider.charAt(0).toUpperCase() + provider.slice(1)} password is saved`;
+				statusElement.className = 'text-success';
+			} else {
+				statusElement.innerHTML = `⚠️ No ${provider.charAt(0).toUpperCase() + provider.slice(1)} password saved`;
+				statusElement.className = 'text-warning';
+			}
+		},
+		error: function() {
+			statusElement.innerHTML = `❓ Unable to check ${provider} password status`;
+			statusElement.className = 'text-muted';
+		}
+	});
+}
+
+// Initialize password status on page load
+$(document).ready(function() {
+	const currentProvider = document.getElementById('emailProvider').value;
+	updatePasswordStatus(currentProvider);
+});
+
+// Test email connection
+function testEmailConnection() {
+	// Get form data
+	const provider = $('#emailProvider').val();
+	const senderEmail = $('#senderEmail').val();
+	const senderPassword = $('#senderPassword').val();
+	const senderName = $('input[name="sender_name"]').val();
+	
+	// Validate required fields
+	if (!senderEmail || !senderPassword) {
+		alert('❌ Please fill in email address and password before testing.');
+		return;
+	}
+	
+	// Show loading message
+	const originalText = event.target.innerHTML;
+	event.target.disabled = true;
+	event.target.innerHTML = '<i class="spinner-border spinner-border-sm" style="margin-right: 5px;"></i>Testing...';
+	
+	// Send test request
+	$.ajax({
+		url: '{{ url_for("settings.test_email_connection") }}',
+		method: 'POST',
+		data: {
+			provider: provider,
+			sender_email: senderEmail,
+			sender_password: senderPassword,
+			sender_name: senderName,
+			test_email: senderEmail  // Send to self for testing
+		},
+		success: function(response) {
+			alert(response.message);
+			event.target.disabled = false;
+			event.target.innerHTML = originalText;
+		},
+		error: function(xhr) {
+			const response = xhr.responseJSON;
+			const message = response ? response.message : '❌ Test failed. Please check your settings.';
+			alert(message);
+			event.target.disabled = false;
+			event.target.innerHTML = originalText;
+		}
+	});
+}
+
+// System settings form handling
+function resetSystemForm() {
+	document.getElementById('systemName').value = '{{ system_settings.system_name }}';
+	document.getElementById('schoolName').value = '{{ system_settings.school_name }}';
+	document.getElementById('academicYear').value = '{{ system_settings.academic_year }}';
+}
+
+// System settings form submission
+document.getElementById('systemSettingsForm').addEventListener('submit', function(e) {
+	const submitBtn = document.getElementById('saveSystemSettings');
+	const originalText = submitBtn.innerHTML;
+	
+	// Show loading state
+	submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm" style="margin-right: 5px;"></i>Saving...';
+	submitBtn.disabled = true;
+	
+	// Re-enable button after 3 seconds (in case of redirect delay)
+	setTimeout(() => {
+		submitBtn.innerHTML = originalText;
+		submitBtn.disabled = false;
+	}, 3000);
+});
+
+// Show success message if redirected with success
+$(document).ready(function() {
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.get('email_saved') === 'true') {
+		alert('✅ Email settings saved successfully!');
+		// Remove query parameter
+		window.history.replaceState({}, document.title, window.location.pathname);
+	}
+	
+	if (urlParams.get('system_saved') === 'true') {
+		alert('✅ System settings saved successfully!');
+		// Remove query parameter
+		window.history.replaceState({}, document.title, window.location.pathname);
+	}
+});
+</script>
+{% endblock %}
