@@ -7,6 +7,18 @@ from pathlib import Path
 watch_dir = Path(__file__).resolve().parent / 'watch'
 sys.path.insert(0, str(watch_dir))
 
+# Debug: Print DATABASE_URL info (without exposing password)
+database_url = os.getenv('DATABASE_URL', 'Not set')
+if database_url != 'Not set':
+    # Mask password in URL for security
+    if '@' in database_url:
+        protocol = database_url.split('://')[0] if '://' in database_url else 'unknown'
+        print(f"🔍 DATABASE_URL detected with protocol: {protocol}://")
+    else:
+        print(f"🔍 DATABASE_URL: {database_url[:20]}...")
+else:
+    print("🔍 No DATABASE_URL set, will use SQLite")
+
 # Import the app creation function from watch package
 from app import create_app
 from app.config import DevelopmentConfig, ProductionConfig

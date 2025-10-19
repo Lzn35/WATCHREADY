@@ -34,6 +34,10 @@ class Config:
     # Check if DATABASE_URL is provided (for PostgreSQL/MySQL)
     database_url = os.getenv("DATABASE_URL")
     if database_url:
+        # Railway/Heroku sometimes use postgres:// instead of postgresql://
+        # SQLAlchemy requires postgresql:// so we need to fix it
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
         SQLALCHEMY_DATABASE_URI = database_url
     else:
         SQLALCHEMY_DATABASE_URI = default_db_uri
