@@ -3,7 +3,7 @@ flask-cors==4.0.1
 flask-sqlalchemy==3.1.1
 flask-wtf==1.2.1
 flask-login==0.6.3
-# psycopg2-binary==2.9.11  # Commented out - using SQLite instead
+psycopg2-binary==2.9.11  # PostgreSQL adapter
 python-dotenv==1.0.1
 alembic==1.13.2
 marshmallow==3.21.3

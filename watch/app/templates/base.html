@@ -7,6 +7,19 @@
 
 	<!-- Site favicon -->
 	<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+	
+	<!-- Force show notification buttons -->
+	<style>
+		#notificationButtons {
+			display: block !important;
+			visibility: visible !important;
+			opacity: 1 !important;
+		}
+		#markAllReadBtn, #deleteAllBtn {
+			display: inline-block !important;
+			visibility: visible !important;
+		}
+	</style>
 	<link
 		rel="apple-touch-icon"
 		sizes="180x180"
@@ -252,29 +265,42 @@
 		$(document).ready(function() {
 			// Initialize notifications on page load
 			initializeGlobalNotifications();
+			
+			// Force show notification buttons immediately and continuously
+			function forceShowButtons() {
+				$('#notificationButtons').css('display', 'block !important').show();
+				console.log('[FORCE] Buttons forced to show');
+			}
+			
+			// Show immediately
+			forceShowButtons();
+			
+			// Show every 1 second to ensure they stay visible
+			setInterval(forceShowButtons, 1000);
 		});
 
 		function initializeGlobalNotifications() {
 			// Load initial notifications
 			loadGlobalNotifications();
 			
-			// Set up polling for real-time updates every 5 seconds
+			// Set up polling for real-time updates every 3 seconds
 			setInterval(function() {
 				loadGlobalNotifications();
-			}, 5000);
+			}, 3000);
 		}
 
 		function loadGlobalNotifications() {
 			$.ajax({
-				url: '/complaints/api/notifications',
+				url: '/notifications/api/notifications',
 				method: 'GET',
 				xhrFields: {
 					withCredentials: true
 				},
 				success: function(data) {
 					console.log('[OK] Notifications loaded:', data);
+					console.log('[DEBUG] Data structure:', JSON.stringify(data, null, 2));
 					const previousCount = globalNotificationCount;
-					globalNotificationCount = data.unread_count;
+					globalNotificationCount = data.unread_count || 0;
 					
 					// Check if new notifications arrived
 					if (previousCount > 0 && globalNotificationCount > previousCount) {
@@ -287,6 +313,13 @@
 					
 					updateGlobalNotificationBadge();
 					displayGlobalNotifications(data.notifications);
+					
+					// Force show buttons if notifications exist
+					if (data.notifications && data.notifications.length > 0) {
+						setTimeout(function() {
+							forceShowNotificationButtons();
+						}, 100);
+					}
 				},
 				error: function(xhr, status, error) {
 					// Silently fail if not logged in or endpoint doesn't exist yet
@@ -296,18 +329,39 @@
 		}
 
 		function updateGlobalNotificationBadge() {
+			console.log('[DEBUG] updateGlobalNotificationBadge called with count:', globalNotificationCount);
 			const badge = $('#notificationBadge');
-			const markAllReadBtn = $('#markAllReadBtn');
+			const notificationButtons = $('#notificationButtons');
 			const noNotificationsMsg = $('#noNotificationsMessage');
+			
+			console.log('[DEBUG] Badge element found:', badge.length > 0);
+			console.log('[DEBUG] Notification Buttons element found:', notificationButtons.length > 0);
+			console.log('[DEBUG] No notifications message found:', noNotificationsMsg.length > 0);
 			
 			if (globalNotificationCount > 0) {
 				badge.text(globalNotificationCount).show();
-				markAllReadBtn.show();
+				notificationButtons.show();
 				noNotificationsMsg.hide();
+				console.log('[DEBUG] Badge updated with count:', globalNotificationCount);
+				console.log('[DEBUG] Notification buttons should be visible now');
 			} else {
 				badge.hide();
-				markAllReadBtn.hide();
+				notificationButtons.hide();
 				noNotificationsMsg.show();
+				console.log('[DEBUG] Badge hidden, showing no notifications message');
+			}
+		}
+
+		// Force show notification buttons (backup function)
+		function forceShowNotificationButtons() {
+			console.log('[FORCE] Attempting to force show notification buttons...');
+			const notificationButtons = $('#notificationButtons');
+			if (notificationButtons.length > 0) {
+				notificationButtons.css('display', 'block !important');
+				notificationButtons.show();
+				console.log('[FORCE] Notification buttons forced to show');
+			} else {
+				console.log('[FORCE] Notification buttons element not found!');
 			}
 		}
 
@@ -328,12 +382,12 @@
 			// Build notifications HTML
 			let notificationsHtml = '';
 			notifications.forEach(function(notification) {
-				const icon = notification.notification_type === 'appointment' ? 'bi-calendar-plus' : 'bi-bell';
-				const iconColor = notification.notification_type === 'appointment' ? '#007bff' : '#6c757d';
+				const icon = notification.type === 'appointment' ? 'bi-calendar-plus' : 'bi-bell';
+				const iconColor = notification.type === 'appointment' ? '#007bff' : '#6c757d';
 				
 				notificationsHtml += `
 					<div class="notification-item" style="border-bottom: 1px solid #e9ecef; transition: background-color 0.2s;">
-						<a href="#" onclick="handleNotificationClick(event, ${notification.id}, '${notification.redirect_url || '/api/complaints/appointments'}'); return false;" 
+						<a href="#" onclick="handleNotificationClick(event, ${notification.id}, '${notification.redirect_url || 'null'}'); return false;" 
 						   style="display: block; padding: 12px 16px; text-decoration: none; color: inherit;"
 						   onmouseover="this.parentElement.style.backgroundColor='#f8f9fa'"
 						   onmouseout="this.parentElement.style.backgroundColor='white'">
@@ -362,26 +416,31 @@
 			
 			// Mark notification as read
 			$.ajax({
-				url: `/complaints/api/notifications/${notificationId}/mark-read`,
+				url: `/notifications/api/notifications/${notificationId}/read`,
 				method: 'POST',
 				success: function() {
 					console.log('[OK] Notification marked as read');
 					// Reload notifications to update badge
 					loadGlobalNotifications();
-					// Redirect to the target page
-					window.location.href = redirectUrl;
+					// Only redirect if redirectUrl is provided and not null
+					if (redirectUrl && redirectUrl !== 'null' && redirectUrl !== 'undefined') {
+						window.location.href = redirectUrl;
+					}
+					// If no redirect URL, just mark as read and do nothing else
 				},
 				error: function(xhr) {
 					console.error('[ERROR] Failed to mark notification as read:', xhr.responseText);
-					// Still redirect even if marking failed
-					window.location.href = redirectUrl;
+					// Only redirect if redirectUrl is provided and not null
+					if (redirectUrl && redirectUrl !== 'null' && redirectUrl !== 'undefined') {
+						window.location.href = redirectUrl;
+					}
 				}
 			});
 		}
 
 		function markAllNotificationsRead() {
 			$.ajax({
-				url: '/complaints/api/notifications/mark-all-read',
+				url: '/notifications/api/notifications/mark-all-read',
 				method: 'POST',
 				success: function() {
 					console.log('[OK] All notifications marked as read');
@@ -395,6 +454,26 @@
 					alert('Failed to mark notifications as read');
 				}
 			});
+		}
+
+		function deleteAllNotifications() {
+			if (confirm('Are you sure you want to delete ALL notifications? This action cannot be undone.')) {
+				$.ajax({
+					url: '/notifications/api/notifications/delete-all',
+					method: 'POST',
+					success: function() {
+						console.log('[OK] All notifications deleted');
+						// Reload notifications
+						loadGlobalNotifications();
+						// Show success message
+						alert('All notifications deleted successfully');
+					},
+					error: function(xhr) {
+						console.error('[ERROR] Failed to delete all notifications:', xhr.responseText);
+						alert('Failed to delete notifications');
+					}
+				});
+			}
 		}
 
 		function showNewNotificationToast(notification) {

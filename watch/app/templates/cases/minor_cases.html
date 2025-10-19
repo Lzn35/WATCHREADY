@@ -74,7 +74,7 @@
 					<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
-			<form method="POST" action="{{ url_for('cases.add_minor_case') }}">
+			<form method="POST" action="{{ url_for('cases.add_minor_case', entity_type='student') }}">
                 <!-- CSRF Protection -->
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 									<div class="modal-body">

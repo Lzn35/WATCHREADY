@@ -26,20 +26,44 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-change-me-in-production")
     
     # Database configuration - Portable and environment-based
-    # Default to SQLite in instance folder, but allow override via DATABASE_URL environment variable
+    # Support both SQLite (development) and PostgreSQL (production)
     instance_path = BASEDIR / 'instance'
     default_db_path = instance_path / 'watch_db.sqlite'
     default_db_uri = f"sqlite:///{str(default_db_path).replace(chr(92), '/')}"
     
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", default_db_uri)
+    # Check if DATABASE_URL is provided (for PostgreSQL/MySQL)
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        SQLALCHEMY_DATABASE_URI = database_url
+    else:
+        SQLALCHEMY_DATABASE_URI = default_db_uri
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # ACID Compliance: Set isolation level based on database type
-    # This ensures full transaction isolation and prevents anomalies
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,  # Verify connections before using them
-        'pool_recycle': 3600,   # Recycle connections every hour
-    }
+    # Database-specific engine options
+    if database_url and 'postgresql' in database_url:
+        # PostgreSQL configuration
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 3600,
+            'pool_size': 10,
+            'max_overflow': 20,
+            'pool_timeout': 30,
+        }
+    elif database_url and 'mysql' in database_url:
+        # MySQL configuration
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 3600,
+            'pool_size': 10,
+            'max_overflow': 20,
+        }
+    else:
+        # SQLite configuration (default)
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 3600,
+        }
     
     # CSRF Protection
     WTF_CSRF_ENABLED = True

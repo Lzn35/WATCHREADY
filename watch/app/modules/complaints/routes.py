@@ -1,8 +1,9 @@
 from flask import jsonify, render_template, request, flash, redirect, url_for, Response, session, current_app
 from ...auth_utils import login_required, get_current_user
-from ...models import Appointment, Notification, User
+from ...models import Appointment, Notification, User, Role
 from ...extensions import db, limiter
 from ...services.email_service import EmailService
+from ...services.notification_service import NotificationService
 from ...utils.uploads import save_upload
 from ...extensions import csrf
 from datetime import datetime
@@ -119,6 +120,46 @@ def create_appointment():
 		db.session.add(appointment)
 		db.session.commit()
 		
+		# Send notification about new appointment
+		try:
+			user = get_current_user()
+			action_user_name = "Student"  # Default for QR code appointments
+			
+			# Only send notifications for student appointments (QR code) or when admin creates
+			# Don't send notifications when committee members create appointments
+			should_notify = True
+			if user and user.username != 'discipline_officer':
+				# This is a committee member creating appointment - don't notify
+				should_notify = False
+				print(f"⚠️ Committee member created appointment - no notification sent")
+			else:
+				# This is a student (QR code) or admin creating appointment - notify
+				if user and user.username == 'discipline_officer':
+					# Use just the name without role prefix
+					action_user_name = user.full_name or user.username
+					# Remove role prefixes if present
+					if action_user_name.startswith('Discipline Officer '):
+						action_user_name = action_user_name.replace('Discipline Officer ', '')
+					elif action_user_name.startswith('Discipline Committee '):
+						action_user_name = action_user_name.replace('Discipline Committee ', '')
+				
+				# Prepare appointment details for enhanced notification
+				appointment_details = {
+					'full_name': appointment.full_name,
+					'appointment_type': appointment.appointment_type,
+					'appointment_date': appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')
+				}
+				
+				NotificationService.notify_appointment_action(
+					action='created',
+					appointment_id=appointment.id,
+					action_user_name=action_user_name,
+					appointment_details=appointment_details
+				)
+				print(f"✅ Notification sent for appointment {appointment.id}")
+		except Exception as e:
+			print(f"❌ Notification error: {e}")
+		
 		# Send acknowledgment email
 		EmailService.send_appointment_created(appointment)
 		
@@ -180,6 +221,37 @@ def confirm_appointment(appointment_id):
 		# Update status to scheduled
 		appointment.status = 'Scheduled'
 		db.session.commit()
+		
+		# Send notification about appointment confirmation
+		user = get_current_user()
+		if user and user.username != 'discipline_officer':
+			# This is a committee member confirming appointment - notify admin only
+			try:
+				# Create admin notification directly (not the full appointment notification)
+				from ...services.notification_service import NotificationService
+				# Prepare appointment details for enhanced notification
+				appointment_details = {
+					'full_name': appointment.full_name,
+					'appointment_type': appointment.appointment_type,
+					'appointment_date': appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')
+				}
+				
+				# Clean action user name (remove role prefixes)
+				action_user_name = user.full_name or user.username
+				if action_user_name.startswith('Discipline Officer '):
+					action_user_name = action_user_name.replace('Discipline Officer ', '')
+				elif action_user_name.startswith('Discipline Committee '):
+					action_user_name = action_user_name.replace('Discipline Committee ', '')
+				
+				NotificationService.notify_appointment_action(
+					action='confirmed',
+					appointment_id=appointment.id,
+					action_user_name=action_user_name,
+					appointment_details=appointment_details
+				)
+				print(f"✅ Admin notification sent for appointment confirmation")
+			except Exception as e:
+				print(f"❌ Notification error: {e}")
 		
 		# Send confirmation email with sender information
 		EmailService.send_appointment_confirmation(appointment, sender_user=current_user)

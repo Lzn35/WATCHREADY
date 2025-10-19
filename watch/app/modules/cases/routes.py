@@ -10,6 +10,7 @@ from ...utils.validation import (
     validate_faculty_department, validate_description, validate_case_date, sanitize_and_validate_text
 )
 from ...services.ocr_service import OCRService
+from ...services.notification_service import NotificationService
 from . import bp
 from datetime import datetime, date
 import os
@@ -30,8 +31,8 @@ def minor_cases_student():
 @login_required
 def minor_cases_list():
 	"""Display individual minor cases with Date, Remarks, Created columns"""
-	# Get all minor cases
-	cases = MinorCase.query.filter_by(case_type='minor').order_by(MinorCase.created_at.desc()).all()
+	# Get all minor cases (all records in MinorCase table are minor cases)
+	cases = MinorCase.query.order_by(MinorCase.created_at.desc()).all()
 	return render_template("cases/minor_cases.html", cases=cases, case_type="minor", entity_type="student", today=date.today())
 
 
@@ -192,8 +193,20 @@ def add_minor_case(entity_type):
 		db.session.add(case)
 		db.session.commit()
 		
-		# Log activity
+		# Send notification to admin about new case
 		user = get_current_user()
+		if user and user.username != 'discipline_officer':
+			try:
+				NotificationService.notify_case_action(
+					action='created',
+					case_type='minor',
+					case_id=case.id,
+					action_user_name=user.full_name or user.username
+				)
+			except Exception as e:
+				print(f"Notification error: {e}")
+		
+		# Log activity
 		if user:
 			try:
 				ActivityLog.log_activity(
@@ -451,8 +464,20 @@ def add_major_case(entity_type):
 		
 		db.session.commit()
 		
-		# Log activity
+		# Send notification to admin about new major case
 		user = get_current_user()
+		if user and user.username != 'discipline_officer':
+			try:
+				NotificationService.notify_case_action(
+					action='created',
+					case_type='major',
+					case_id=case.id,
+					action_user_name=user.full_name or user.username
+				)
+			except Exception as e:
+				print(f"Notification error: {e}")
+		
+		# Log activity
 		if user:
 			try:
 				activity_desc = f"Added major case for {entity_type}: {person.full_name}"

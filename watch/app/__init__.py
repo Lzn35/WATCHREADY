@@ -112,6 +112,13 @@ def create_app(config_class=Config):
         app.register_blueprint(attendance_bp, url_prefix="/attendance")
     except Exception:
         pass
+    
+    # Register notifications module
+    try:
+        from .modules.notifications import bp as notifications_bp
+        app.register_blueprint(notifications_bp, url_prefix="/notifications")
+    except Exception:
+        pass
 
     # Register error handlers
     try:
