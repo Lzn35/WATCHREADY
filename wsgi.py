@@ -39,30 +39,27 @@ try:
     with app.app_context():
         print("✓ App context created")
         from app.extensions import db
-        from app.models import Role, User
-        from werkzeug.security import generate_password_hash
         
-        print("✓ Imports successful")
-        print("Starting database initialization...")
+        print("✓ Starting database initialization...")
         
         # Create tables if they don't exist
         db.create_all()
         print("✓ Database tables created")
+        
+        # Import models after db is ready
+        from app.models import Role, User
+        from werkzeug.security import generate_password_hash
         
         # Create default roles
         if not Role.query.filter_by(name='Admin').first():
             admin_role = Role(name='Admin')
             db.session.add(admin_role)
             print("✓ Created Admin role")
-        else:
-            print("✓ Admin role already exists")
         
         if not Role.query.filter_by(name='User').first():
             user_role = Role(name='User')
             db.session.add(user_role)
             print("✓ Created User role")
-        else:
-            print("✓ User role already exists")
         
         # Create admin user
         admin_role_obj = Role.query.filter_by(name='Admin').first()
@@ -77,8 +74,6 @@ try:
             )
             db.session.add(admin_user)
             print("✓ Created admin user: discipline_officer / admin123")
-        else:
-            print("✓ Admin user already exists")
         
         db.session.commit()
         print("✓ Database initialized successfully!")
@@ -86,8 +81,6 @@ try:
 except Exception as e:
     print(f"❌ Database initialization error: {e}")
     print("App will continue without database initialization")
-    import traceback
-    traceback.print_exc()
 
 print("=== DATABASE INITIALIZATION END ===")
 
