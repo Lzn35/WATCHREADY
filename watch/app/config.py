@@ -40,6 +40,7 @@ class Config:
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         SQLALCHEMY_DATABASE_URI = database_url
     else:
+        # Fallback to SQLite for local development
         SQLALCHEMY_DATABASE_URI = default_db_uri
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
