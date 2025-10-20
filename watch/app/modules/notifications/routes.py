@@ -11,7 +11,7 @@ from ...models import Notification, User, Role
 from ...extensions import csrf
 from . import bp
 
-@bp.get('/api/notifications')
+@bp.route('/api/notifications', methods=['GET'])
 @csrf.exempt
 def get_notifications():
     """Get notifications for the current user"""
@@ -22,7 +22,15 @@ def get_notifications():
             return jsonify({'error': 'User not authenticated'}), 401
         
         # Get notifications for the user
-        notifications = NotificationService.get_user_notifications(user.id, limit=20)
+        try:
+            notifications = NotificationService.get_user_notifications(user.id, limit=20)
+        except Exception as db_error:
+            # If database query fails, return empty notifications
+            print(f"Database error in notifications: {db_error}")
+            return jsonify({
+                'notifications': [],
+                'unread_count': 0
+            })
         
         notifications_data = []
         for notification in notifications:
@@ -66,9 +74,12 @@ def get_notifications():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in get_notifications: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
 
-@bp.post('/api/notifications/<int:notification_id>/read')
+@bp.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
 @csrf.exempt
 @login_required
 def mark_notification_read(notification_id):
@@ -87,7 +98,7 @@ def mark_notification_read(notification_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bp.post('/api/notifications/mark-all-read')
+@bp.route('/api/notifications/mark-all-read', methods=['POST'])
 @csrf.exempt
 @login_required
 def mark_all_notifications_read():
@@ -103,7 +114,7 @@ def mark_all_notifications_read():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bp.post('/api/notifications/delete-all')
+@bp.route('/api/notifications/delete-all', methods=['POST'])
 @csrf.exempt
 @login_required
 def delete_all_notifications():

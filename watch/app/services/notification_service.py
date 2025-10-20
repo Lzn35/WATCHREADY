@@ -5,8 +5,8 @@ Handles transparent notifications between Discipline Officer and Discipline Comm
 """
 
 from datetime import datetime
-from watch.app.extensions import db
-from watch.app.models import Notification, User, Role
+from ..extensions import db
+from ..models import Notification, User, Role
 
 class NotificationService:
     """Service for managing notifications with transparency logic"""

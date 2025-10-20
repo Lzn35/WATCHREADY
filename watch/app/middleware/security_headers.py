@@ -52,12 +52,12 @@ class SecurityHeadersMiddleware:
             if 'Content-Security-Policy' not in response.headers:
                 csp_policy = (
                     "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; "
-                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: data: https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com; "
-                    "script-src-elem 'self' 'unsafe-inline' https: http: https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com; "
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: data: https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+                    "script-src-elem 'self' 'unsafe-inline' https: http: https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
                     "style-src 'self' 'unsafe-inline' https: data: https://fonts.googleapis.com; "
                     "font-src 'self' https: data: https://fonts.gstatic.com; "
                     "img-src 'self' data: https: https://www.google-analytics.com; "
-                    "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; "
+                    "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://cdn.jsdelivr.net; "
                     "frame-src 'self' https:; "
                     "object-src 'none'; "
                     "base-uri 'self';"

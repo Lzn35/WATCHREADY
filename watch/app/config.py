@@ -8,16 +8,21 @@ from dotenv import load_dotenv
 BASEDIR = Path(__file__).resolve().parent.parent
 
 # Load .env from project app root (watch/)
-env_path = BASEDIR / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
-else:
-    # Also try repo root .env
-    repo_root_env = BASEDIR.parent / ".env"
-    if repo_root_env.exists():
-        load_dotenv(dotenv_path=repo_root_env)
+# Only load .env files if not in production (Railway sets DATABASE_URL automatically)
+if not os.getenv('RAILWAY_ENVIRONMENT') and not os.getenv('DATABASE_URL'):
+    env_path = BASEDIR / ".env"
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
     else:
-        load_dotenv()
+        # Also try repo root .env
+        repo_root_env = BASEDIR.parent / ".env"
+        if repo_root_env.exists():
+            load_dotenv(dotenv_path=repo_root_env)
+        else:
+            load_dotenv()
+else:
+    # In Railway/production, just load environment variables without .env files
+    load_dotenv(override=False)
 
 class Config:
     """Consolidated configuration class with secure defaults."""
@@ -33,15 +38,24 @@ class Config:
     
     # Check if DATABASE_URL is provided (for PostgreSQL/MySQL)
     database_url = os.getenv("DATABASE_URL")
+    
+    # Debug logging for Railway
+    if os.getenv('RAILWAY_ENVIRONMENT'):
+        print(f"[RAILWAY DEBUG] DATABASE_URL from environment: {database_url}")
+        print(f"[RAILWAY DEBUG] RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT')}")
+    
     if database_url:
         # Railway/Heroku sometimes use postgres:// instead of postgresql://
         # SQLAlchemy requires postgresql:// so we need to fix it
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         SQLALCHEMY_DATABASE_URI = database_url
+        if os.getenv('RAILWAY_ENVIRONMENT'):
+            print(f"[RAILWAY DEBUG] Using DATABASE_URL: {SQLALCHEMY_DATABASE_URI}")
     else:
-        # Fallback to SQLite for local development
         SQLALCHEMY_DATABASE_URI = default_db_uri
+        if os.getenv('RAILWAY_ENVIRONMENT'):
+            print(f"[RAILWAY DEBUG] No DATABASE_URL found, using default: {SQLALCHEMY_DATABASE_URI}")
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -101,14 +115,10 @@ class Config:
     JSON_SORT_KEYS = False
     JSONIFY_PRETTYPRINT_REGULAR = False
     
-    # MySQL Configuration (for future migration)
-    # Uncomment and configure when ready to migrate from SQLite to MySQL
-    # MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-    # MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
-    # MYSQL_USER = os.getenv("MYSQL_USER", "watch_user")
-    # MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-    # MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "watch_db")
-    # To enable MySQL: set DATABASE_URL=mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}
+    # Database Configuration Notes:
+    # - For SQLite (development): No DATABASE_URL needed, uses default
+    # - For PostgreSQL (production): Set DATABASE_URL=postgresql://user:pass@host:port/db
+    # - For MySQL: Set DATABASE_URL=mysql+pymysql://user:pass@host:port/db
     
     # Tesseract OCR path (if used)
     TESSERACT_PATH = os.getenv("TESSERACT_PATH", "")
