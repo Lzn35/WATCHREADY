@@ -564,6 +564,36 @@ $(document).ready(function() {
 		$('#ocrUploadModal').modal('show');
 	});
 	
+	// Fix modal scroll issues
+	$('#ocrUploadModal').on('shown.bs.modal', function() {
+		// Ensure body can scroll if modal content is too tall
+		$('body').css('overflow', 'auto');
+	});
+	
+	$('#ocrUploadModal').on('hidden.bs.modal', function() {
+		// Restore body scroll
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		// Remove any backdrop
+		$('.modal-backdrop').remove();
+	});
+	
+	// Global fix for all modals to prevent scroll freezing
+	$(document).on('hidden.bs.modal', '.modal', function() {
+		// Restore body scroll for any modal
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		// Remove any backdrop
+		$('.modal-backdrop').remove();
+	});
+	
+	// Ensure body scroll is restored when page loads
+	$(document).ready(function() {
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		$('.modal-backdrop').remove();
+	});
+	
 	// Handle file selection
 	$('#ocrFileInput').on('change', function(e) {
 		const file = e.target.files[0];
