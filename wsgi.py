@@ -53,9 +53,35 @@ try:
         # Clean up duplicate roles first
         print("✓ Cleaning up duplicate roles...")
         
-        # Delete uppercase versions
-        Role.query.filter_by(name='Admin').delete()
-        Role.query.filter_by(name='User').delete()
+        # Get existing roles
+        admin_upper = Role.query.filter_by(name='Admin').first()
+        user_upper = Role.query.filter_by(name='User').first()
+        admin_lower = Role.query.filter_by(name='admin').first()
+        user_lower = Role.query.filter_by(name='user').first()
+        
+        # Update users to use lowercase roles before deleting uppercase ones
+        if admin_upper and admin_lower:
+            users_with_admin_upper = User.query.filter_by(role_id=admin_upper.id).all()
+            for user in users_with_admin_upper:
+                user.role_id = admin_lower.id
+            print(f"✓ Updated {len(users_with_admin_upper)} users from Admin to admin")
+        
+        if user_upper and user_lower:
+            users_with_user_upper = User.query.filter_by(role_id=user_upper.id).all()
+            for user in users_with_user_upper:
+                user.role_id = user_lower.id
+            print(f"✓ Updated {len(users_with_user_upper)} users from User to user")
+        
+        # Commit user updates first
+        db.session.commit()
+        
+        # Now delete uppercase versions
+        if admin_upper:
+            db.session.delete(admin_upper)
+            print("✓ Deleted Admin role")
+        if user_upper:
+            db.session.delete(user_upper)
+            print("✓ Deleted User role")
         
         # Create default roles (lowercase only)
         admin_role = Role.query.filter_by(name='admin').first()
