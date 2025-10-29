@@ -104,33 +104,27 @@ try:
         db.session.commit()
         print("✓ Roles cleaned up and committed")
         
-        # Create admin user
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User(
-                username='admin',
-                password_hash=generate_password_hash('admin123'),
-                role_id=admin_role.id,
-                is_protected=True,
-                full_name='Discipline Officer',
-                email='admin@example.com',
-                is_active=True
-            )
-            db.session.add(admin_user)
-            print("✓ Created admin user: admin / admin123")
+        # Clean up existing users - keep only one default admin
+        print("✓ Cleaning up existing users...")
         
-        # Create user account
-        if not User.query.filter_by(username='user').first():
-            user_account = User(
-                username='user',
-                password_hash=generate_password_hash('user123'),
-                role_id=user_role.id,
-                is_protected=False,
-                full_name='Discipline Committee',
-                email='user@example.com',
-                is_active=True
-            )
-            db.session.add(user_account)
-            print("✓ Created user account: user / user123")
+        # Delete all existing users to start fresh
+        User.query.delete()
+        print("✓ Deleted all existing users")
+        
+        # Create ONLY ONE default admin account for Discipline Officer
+        admin_user = User(
+            username='admin',
+            password_hash=generate_password_hash('admin123'),
+            role_id=admin_role.id,
+            is_protected=True,
+            full_name='Discipline Officer',
+            email='admin@sti-watch.com',
+            is_active=True
+        )
+        db.session.add(admin_user)
+        print("✓ Created default admin account: admin / admin123 (Discipline Officer)")
+        
+        # Note: No default user account - Discipline Officer can create users via User Management
         
         db.session.commit()
         print("✓ Database initialized successfully!")
