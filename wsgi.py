@@ -107,6 +107,12 @@ try:
         # Clean up existing users - keep only one default admin
         print("✓ Cleaning up existing users...")
         
+        # Clean up audit logs first to avoid foreign key constraints
+        from app.models import AuditLog, ActivityLog
+        AuditLog.query.delete()
+        ActivityLog.query.delete()
+        print("✓ Cleaned up audit logs and activity logs")
+        
         # Delete all existing users to start fresh
         User.query.delete()
         print("✓ Deleted all existing users")
