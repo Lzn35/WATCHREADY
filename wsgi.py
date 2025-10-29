@@ -50,30 +50,61 @@ try:
         from app.models import Role, User
         from werkzeug.security import generate_password_hash
         
-        # Create default roles
-        if not Role.query.filter_by(name='Admin').first():
-            admin_role = Role(name='Admin')
-            db.session.add(admin_role)
-            print("✓ Created Admin role")
+        # Clean up duplicate roles first
+        print("✓ Cleaning up duplicate roles...")
         
-        if not Role.query.filter_by(name='User').first():
-            user_role = Role(name='User')
+        # Delete uppercase versions
+        Role.query.filter_by(name='Admin').delete()
+        Role.query.filter_by(name='User').delete()
+        
+        # Create default roles (lowercase only)
+        admin_role = Role.query.filter_by(name='admin').first()
+        if not admin_role:
+            admin_role = Role(name='admin')
+            db.session.add(admin_role)
+            print("✓ Created admin role")
+        else:
+            print("✓ Admin role already exists")
+        
+        user_role = Role.query.filter_by(name='user').first()
+        if not user_role:
+            user_role = Role(name='user')
             db.session.add(user_role)
-            print("✓ Created User role")
+            print("✓ Created user role")
+        else:
+            print("✓ User role already exists")
+        
+        # Commit roles first
+        db.session.commit()
+        print("✓ Roles cleaned up and committed")
         
         # Create admin user
-        admin_role_obj = Role.query.filter_by(name='Admin').first()
-        if admin_role_obj and not User.query.filter_by(username='discipline_officer').first():
+        if not User.query.filter_by(username='admin').first():
             admin_user = User(
-                username='discipline_officer',
+                username='admin',
                 password_hash=generate_password_hash('admin123'),
-                role=admin_role_obj,
+                role_id=admin_role.id,
                 is_protected=True,
                 full_name='Discipline Officer',
-                email='admin@example.com'
+                email='admin@example.com',
+                is_active=True
             )
             db.session.add(admin_user)
-            print("✓ Created admin user: discipline_officer / admin123")
+            print("✓ Created admin user: admin / admin123")
+        
+        # Create user account
+        if not User.query.filter_by(username='user').first():
+            user_account = User(
+                username='user',
+                password_hash=generate_password_hash('user123'),
+                role_id=user_role.id,
+                is_protected=False,
+                full_name='Discipline Committee',
+                email='user@example.com',
+                is_active=True
+            )
+            db.session.add(user_account)
+            print("✓ Created user account: user / user123")
         
         db.session.commit()
         print("✓ Database initialized successfully!")
