@@ -1,0 +1,814 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance History - WATCH{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: #007BA7; /* cerulean */
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.15);
+        box-shadow: 0 6px 20px rgba(0, 123, 167, 0.15);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+    
+    .page-header p {
+        margin: 5px 0 0 0;
+        opacity: 0.95;
+        font-size: 1rem;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .filter-section h5 {
+        margin: 0 0 20px 0;
+        color: #495057;
+        font-weight: 600;
+    }
+    
+    .filter-controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        align-items: end;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+    
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #1b00ff;
+        box-shadow: 0 0 0 2px rgba(27, 0, 255, 0.1);
+    }
+    
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-filter {
+        background: #1b00ff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .btn-filter:hover {
+        background: #1400cc;
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    .btn-clear {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .btn-clear:hover {
+        background: #5a6268;
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    .btn-report {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .btn-report:hover {
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .results-header {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .results-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .results-count {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .history-table {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table thead th {
+        background: #f8f9fa;
+        border: none;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        padding: 15px;
+    }
+    
+    .table tbody td {
+        padding: 15px;
+        border-top: 1px solid #f1f3f4;
+        vertical-align: middle;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .clickable-status:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .status-dropdown {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        min-width: 140px;
+        display: none;
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
+    }
+    
+    .status-option {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        transition: background-color 0.2s ease;
+    }
+    
+    .status-option:last-child {
+        border-bottom: none;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .status-option:first-child {
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .status-option:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .status-option i {
+        margin-right: 8px;
+        width: 16px;
+    }
+    
+    .status-option.present {
+        color: #28a745;
+    }
+    
+    .status-option.late {
+        color: #ffc107;
+    }
+    
+    .status-option.absent {
+        color: #dc3545;
+    }
+    
+    .status-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .current-status {
+        background-color: #e3f2fd !important;
+        font-weight: bold;
+    }
+    
+    .current-status:hover {
+        background-color: #bbdefb !important;
+    }
+    
+    .status-present {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-absent {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-late {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .faculty-name {
+        font-weight: 600;
+        color: #1b00ff;
+    }
+    
+    .subject-name {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .time-slot {
+        font-family: 'Courier New', monospace;
+        background: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .filter-controls {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-actions {
+            flex-direction: column;
+        }
+        
+        .btn-filter, .btn-clear, .btn-report {
+            width: 100%;
+        }
+        
+        .results-info {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-clock-history" style="margin-right: 10px;"></i>Attendance History</h1>
+    <p>View and analyze historical attendance records with advanced filtering options</p>
+</div>
+
+<div class="filter-section">
+    <h5><i class="bi bi-funnel" style="margin-right: 8px;"></i>Filter Options</h5>
+    <form method="GET" action="{{ url_for('attendance.attendance_history') }}">
+        <div class="filter-controls">
+            <div class="filter-group">
+                <label for="date-filter">Specific Date</label>
+                <input type="date" id="date-filter" name="date" value="{{ selected_date }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <label for="month-filter">Month</label>
+                <input type="month" id="month-filter" name="month" value="{{ selected_month }}" class="form-control">
+            </div>
+            <div class="filter-group">
+                <label for="faculty-filter">Faculty</label>
+                <select id="faculty-filter" name="faculty" class="form-control">
+                    <option value="">All Faculty</option>
+                    <option value="Dr. John Smith">Dr. John Smith</option>
+                    <option value="Prof. Sarah Johnson">Prof. Sarah Johnson</option>
+                    <option value="Dr. Michael Brown">Dr. Michael Brown</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="status-filter">Status</label>
+                <select id="status-filter" name="status" class="form-control">
+                    <option value="">All Status</option>
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Late">Late</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-filter">
+                    <i class="bi bi-search" style="margin-right: 5px;"></i>Apply Filters
+                </button>
+                <button type="button" class="btn btn-clear" onclick="clearFilters()">
+                    <i class="bi bi-x-circle" style="margin-right: 5px;"></i>Clear All
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if history and history|length > 0 %}
+<div class="results-header">
+    <div class="results-info">
+        <div class="results-count">
+            <i class="bi bi-list-check" style="margin-right: 8px;"></i>
+            Showing {{ history|length }} record{{ 's' if history|length != 1 else '' }}
+            {% if selected_date %}
+                for {{ selected_date }}
+            {% elif selected_month %}
+                for {{ selected_month }}
+            {% endif %}
+        </div>
+        <button class="btn btn-report" onclick="generateReport()">
+            <i class="bi bi-file-earmark-pdf" style="margin-right: 8px;"></i>
+            Generate Report
+        </button>
+    </div>
+</div>
+
+<div class="history-table">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Faculty</th>
+                    <th>Subject</th>
+                    <th>Time Slot</th>
+                    <th>Room</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in history %}
+                <tr>
+                    <td>
+                        <strong>{{ record.date }}</strong>
+                    </td>
+                    <td>
+                        <div class="faculty-name">{{ record.faculty_name }}</div>
+                    </td>
+                    <td>
+                        <div class="subject-name">{{ record.subject }}</div>
+                    </td>
+                    <td>
+                        <span class="time-slot">{{ record.time_slot }}</span>
+                    </td>
+                    <td>{{ record.room }}</td>
+                    <td>
+                        <div class="status-container">
+                            <span class="status-badge status-{{ record.status.lower() }} clickable-status" 
+                                  data-record-id="{{ record.id }}" 
+                                  data-current-status="{{ record.status }}"
+                                  style="cursor: pointer; transition: all 0.3s ease;">
+                                {% if record.status == 'Present' %}
+                                    <i class="bi bi-check-circle" style="margin-right: 4px;"></i>
+                                {% elif record.status == 'Absent' %}
+                                    <i class="bi bi-x-circle" style="margin-right: 4px;"></i>
+                                {% elif record.status == 'Late' %}
+                                    <i class="bi bi-clock" style="margin-right: 4px;"></i>
+                                {% endif %}
+                                {{ record.status }}
+                            </span>
+                            
+                            <!-- Status Dropdown -->
+                            <div class="status-dropdown" id="dropdown-{{ record.id }}">
+                                <div class="status-option present {% if record.status == 'Present' %}current-status{% endif %}" data-status="Present">
+                                    <i class="bi bi-check-circle"></i>
+                                    Present
+                                    {% if record.status == 'Present' %}<span style="float: right; font-size: 12px; color: #666;">(Current)</span>{% endif %}
+                                </div>
+                                <div class="status-option late {% if record.status == 'Late' %}current-status{% endif %}" data-status="Late">
+                                    <i class="bi bi-clock"></i>
+                                    Late
+                                    {% if record.status == 'Late' %}<span style="float: right; font-size: 12px; color: #666;">(Current)</span>{% endif %}
+                                </div>
+                                <div class="status-option absent {% if record.status == 'Absent' %}current-status{% endif %}" data-status="Absent">
+                                    <i class="bi bi-x-circle"></i>
+                                    Absent
+                                    {% if record.status == 'Absent' %}<span style="float: right; font-size: 12px; color: #666;">(Current)</span>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-calendar-x"></i>
+    <h4>No Records Found</h4>
+    <p>No attendance records match your current filter criteria. Try adjusting your filters or check if schedules have been created.</p>
+    <div style="margin-top: 20px;">
+        <button class="btn btn-report" onclick="generateReport()" style="margin-right: 10px;">
+            <i class="bi bi-file-earmark-pdf" style="margin-right: 8px;"></i>
+            Generate Report
+        </button>
+        <a href="{{ url_for('attendance.schedule_management') }}" class="btn btn-primary" style="margin-right: 10px;">
+            <i class="bi bi-calendar-plus" style="margin-right: 8px;"></i>
+            Manage Schedules
+        </a>
+        <a href="{{ url_for('attendance.list_checklists') }}" class="btn btn-success">
+            <i class="bi bi-check2-square" style="margin-right: 8px;"></i>
+            Mark Attendance
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Notification function
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} auto-hide`;
+    notification.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+    notification.innerHTML = `
+        <i class="bi bi-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}" style="margin-right: 8px;"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.5s';
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
+// Show status change confirmation
+function showStatusChangeConfirmation(recordId, currentStatus, newStatus) {
+    console.log('DEBUG: showStatusChangeConfirmation called with:', {
+        recordId: recordId,
+        currentStatus: currentStatus,
+        newStatus: newStatus
+    });
+    
+    // Validate inputs
+    if (!recordId || !currentStatus || !newStatus) {
+        console.error('ERROR: Missing required parameters:', {
+            recordId: recordId,
+            currentStatus: currentStatus,
+            newStatus: newStatus
+        });
+        showNotification('Error: Missing required data. Please refresh the page.', 'error');
+        return;
+    }
+    
+    const confirmationMessage = `Are you sure you want to change the status from "${currentStatus}" to "${newStatus}"?`;
+    
+    if (confirm(confirmationMessage)) {
+        updateAttendanceStatus(parseInt(recordId), newStatus);
+    }
+}
+
+// Edit status function (kept for compatibility)
+function editStatus(recordId, currentStatus) {
+    // Convert recordId to integer
+    const id = parseInt(recordId);
+    
+    const statusOptions = ['Present', 'Late', 'Absent'];
+    const otherOptions = statusOptions.filter(status => status !== currentStatus);
+    
+    if (otherOptions.length === 0) return;
+    
+    const message = `Change status from ${currentStatus} to:`;
+    const newStatus = confirm(`${message}\n\nClick OK for ${otherOptions[0]}, Cancel for ${otherOptions[1] || 'keep current'}`);
+    
+    let selectedStatus;
+    if (newStatus) {
+        selectedStatus = otherOptions[0];
+    } else if (otherOptions.length > 1) {
+        selectedStatus = otherOptions[1];
+    } else {
+        return; // User cancelled
+    }
+    
+    // Show confirmation
+    if (confirm(`Are you sure you want to change the status from ${currentStatus} to ${selectedStatus}?`)) {
+        updateAttendanceStatus(id, selectedStatus);
+    }
+}
+
+// Update attendance status
+function updateAttendanceStatus(recordId, newStatus) {
+    console.log('DEBUG: updateAttendanceStatus called with recordId:', recordId, 'newStatus:', newStatus);
+    
+    const formData = new FormData();
+    formData.append('record_id', recordId);
+    formData.append('new_status', newStatus);
+    
+    console.log('DEBUG: Sending form data:', {
+        record_id: recordId,
+        new_status: newStatus
+    });
+    
+    fetch('{{ url_for("attendance.update_history_status") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: formData
+    })
+    .then(response => {
+        console.log('DEBUG: Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('DEBUG: Response data:', data);
+        if (data.success) {
+            showNotification(`Status updated to ${newStatus} successfully!`, 'success');
+            // Reload page to show updated status
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(`Error: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while updating status.', 'error');
+    });
+}
+
+function clearFilters() {
+    document.getElementById('date-filter').value = '';
+    document.getElementById('month-filter').value = '';
+    document.getElementById('faculty-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    
+    // Redirect to clear URL parameters
+    window.location.href = "{{ url_for('attendance.attendance_history') }}";
+}
+
+function generateReport() {
+    // Get current filter values
+    const dateFilter = document.getElementById('date-filter').value;
+    const monthFilter = document.getElementById('month-filter').value;
+    const facultyFilter = document.getElementById('faculty-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    
+    // Determine report type and value
+    let reportType = 'all';
+    let dateValue = 'all-time';
+    
+    if (dateFilter) {
+        reportType = 'date';
+        dateValue = dateFilter;
+    } else if (monthFilter) {
+        reportType = 'month';
+        dateValue = monthFilter;
+    }
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('report_type', reportType);
+    formData.append('date_value', dateValue);
+    formData.append('faculty', facultyFilter);
+    formData.append('status', statusFilter);
+    
+    // Show loading state
+    const reportBtn = event.target;
+    const originalText = reportBtn.innerHTML;
+    reportBtn.innerHTML = '<i class="bi bi-hourglass-split" style="margin-right: 8px;"></i>Generating...';
+    reportBtn.disabled = true;
+    
+    // Send request to generate report
+    fetch("{{ url_for('attendance.generate_report') }}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message with download option
+            const downloadConfirm = confirm(`${data.message}\n\nWould you like to download the report now?`);
+            if (downloadConfirm && data.download_url) {
+                // Create a temporary link to download the file
+                const downloadLink = document.createElement('a');
+                downloadLink.href = data.download_url;
+                downloadLink.download = '';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }
+        } else {
+            showNotification('Error generating report: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while generating the report.', 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        reportBtn.innerHTML = originalText;
+        reportBtn.disabled = false;
+    });
+}
+
+// Initialize date inputs
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DEBUG: DOM loaded, initializing attendance history...');
+    
+    // Add click event listeners to status badges
+    const clickableStatuses = document.querySelectorAll('.clickable-status');
+    console.log('DEBUG: Found', clickableStatuses.length, 'clickable status elements');
+    
+    clickableStatuses.forEach(function(badge, index) {
+        console.log(`DEBUG: Setting up badge ${index}:`, badge);
+        badge.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const recordId = this.getAttribute('data-record-id');
+            const dropdown = document.getElementById('dropdown-' + recordId);
+            
+            console.log('DEBUG: Badge clicked, recordId:', recordId, 'dropdown:', dropdown);
+            
+            // Hide all other dropdowns
+            document.querySelectorAll('.status-dropdown').forEach(function(dd) {
+                if (dd !== dropdown) {
+                    dd.style.display = 'none';
+                }
+            });
+            
+            // Toggle current dropdown
+            if (dropdown) {
+                if (dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'block';
+                }
+            } else {
+                console.error('ERROR: Dropdown not found for recordId:', recordId);
+            }
+        });
+    });
+    
+    // Add click event listeners to dropdown options
+    const statusOptions = document.querySelectorAll('.status-option');
+    console.log('DEBUG: Found', statusOptions.length, 'status option elements');
+    
+    statusOptions.forEach(function(option, index) {
+        console.log(`DEBUG: Setting up option ${index}:`, option);
+        option.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Debug: Check DOM structure
+            const statusContainer = this.closest('.status-container');
+            const clickableStatus = statusContainer ? statusContainer.querySelector('.clickable-status') : null;
+            
+            console.log('DEBUG: DOM elements found:', {
+                statusContainer: statusContainer,
+                clickableStatus: clickableStatus
+            });
+            
+            if (!clickableStatus) {
+                console.error('ERROR: Could not find clickable-status element');
+                return;
+            }
+            
+            const recordId = clickableStatus.getAttribute('data-record-id');
+            const currentStatus = clickableStatus.getAttribute('data-current-status');
+            const newStatus = this.getAttribute('data-status');
+            
+            console.log('DEBUG: Extracted values:', {
+                recordId: recordId,
+                currentStatus: currentStatus,
+                newStatus: newStatus
+            });
+            
+            // Validate recordId
+            if (!recordId || recordId === 'null' || recordId === 'undefined') {
+                console.error('ERROR: Invalid recordId:', recordId);
+                showNotification('Error: Invalid record ID. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // Hide dropdown
+            this.closest('.status-dropdown').style.display = 'none';
+            
+            // Show confirmation if status is different
+            if (newStatus !== currentStatus) {
+                showStatusChangeConfirmation(recordId, currentStatus, newStatus);
+            }
+        });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.status-dropdown').forEach(function(dropdown) {
+            dropdown.style.display = 'none';
+        });
+    });
+    
+    // Set default month to current month if no filters are applied
+    const monthInput = document.getElementById('month-filter');
+    const dateInput = document.getElementById('date-filter');
+    
+    if (!monthInput.value && !dateInput.value && !window.location.search) {
+        const now = new Date();
+        const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        monthInput.value = currentMonth;
+    }
+    
+    // Prevent both date and month from being selected
+    dateInput.addEventListener('change', function() {
+        if (this.value) {
+            monthInput.value = '';
+        }
+    });
+    
+    monthInput.addEventListener('change', function() {
+        if (this.value) {
+            dateInput.value = '';
+        }
+    });
+});
+</script>
+{% endblock %}

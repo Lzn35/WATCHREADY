@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<!-- Basic Page Info -->
+	<meta charset="utf-8" />
+	<title>{% block title %}{{ title or 'WATCH - Web-based Attendance Tracking and Case Handling System' }}{% endblock %}</title>
+
+	<!-- Site favicon -->
+	<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+	
+	<!-- Force show notification buttons -->
+	<style>
+		#notificationButtons {
+			display: block !important;
+			visibility: visible !important;
+			opacity: 1 !important;
+		}
+		#markAllReadBtn, #deleteAllBtn {
+			display: inline-block !important;
+			visibility: visible !important;
+		}
+	</style>
+	<link
+		rel="apple-touch-icon"
+		sizes="180x180"
+		href="{{ url_for('static', filename='img/favicon.png') }}"
+	/>
+	<link
+		rel="icon"
+		type="image/png"
+		sizes="32x32"
+		href="{{ url_for('static', filename='img/favicon.png') }}"
+	/>
+	<link
+		rel="icon"
+		type="image/png"
+		sizes="16x16"
+		href="{{ url_for('static', filename='img/favicon.png') }}"
+	/>
+
+	<!-- Mobile Specific Metas -->
+	<meta
+		name="viewport"
+		content="width=device-width, initial-scale=1, maximum-scale=1"
+	/>
+	
+	<!-- CSRF Token for AJAX requests -->
+	<meta name="csrf-token" content="{{ csrf_token() }}"  />
+
+	<!-- Google Font -->
+	<link
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+		rel="stylesheet"
+	/>
+	
+	<!-- CSS -->
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='vendors/styles/core.css') }}" />
+	<link
+		rel="stylesheet"
+		type="text/css"
+		href="{{ url_for('static', filename='vendors/styles/icon-font.min.css') }}"
+	/>
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='vendors/styles/style.css') }}" />
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/app.css') }}" />
+	
+	<!-- Toast notification animations -->
+	<style>
+		@keyframes slideInRight {
+			from {
+				transform: translateX(100%);
+				opacity: 0;
+			}
+			to {
+				transform: translateX(0);
+				opacity: 1;
+			}
+		}
+
+		@keyframes slideOutRight {
+			from {
+				transform: translateX(0);
+				opacity: 1;
+			}
+			to {
+				transform: translateX(100%);
+				opacity: 0;
+			}
+		}
+
+		.toast-notification {
+			animation: slideInRight 0.3s ease;
+		}
+
+		.toast-notification.fade-out {
+			animation: slideOutRight 0.3s ease;
+		}
+	</style>
+	
+	{% block extra_css %}{% endblock %}
+
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script
+		async
+		src="https://www.googletagmanager.com/gtag/js?id=G-GBZ3SGGX85"
+	></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() {
+			dataLayer.push(arguments);
+		}
+		gtag("js", new Date());
+		gtag("config", "G-GBZ3SGGX85");
+	</script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+	{% block preloader %}
+	<div class="pre-loader">
+		<div class="pre-loader-box">
+			<div class="loader-logo">
+				<img src="{{ url_for('static', filename='img/Watch_Logo.png') }}" 
+					 alt="WATCH Logo">
+			</div>
+			<div class="loader-progress">
+				<div class="bar" id="progressBar"></div>
+			</div>
+			<div class="loading-text">Loading...</div>
+		</div>
+	</div>	
+	
+	{% endblock %}
+
+	{% block header %}
+	{% include 'partials/header.html' %}
+	{% endblock %}
+
+	{% block right_sidebar %}
+	{% include 'partials/right_sidebar.html' %}
+	{% endblock %}
+
+	{% block left_sidebar %}
+	{% include 'partials/left_sidebar.html' %}
+	{% endblock %}
+
+	{% block main_content %}
+	<div class="main-container">
+		<div class="pd-ltr-20 xs-pd-20-10">
+			<!-- Global Flash Messages -->
+			{% with messages = get_flashed_messages(with_categories=true) %}
+				{% if messages %}
+					<div id="global-flash-messages" style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;">
+						{% for category, message in messages %}
+							<div class="alert alert-{{ 'danger' if category == 'error' else category }} fade show notification-toast auto-hide" role="alert" style="margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+								<i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}" style="margin-right: 8px;"></i>
+								{{ message }}
+							</div>
+						{% endfor %}
+					</div>
+				{% endif %}
+			{% endwith %}
+			
+			<div class="min-height-200px">
+				{% block content %}{% endblock %}
+			</div>
+		</div>
+	</div>
+	{% endblock %}
+
+
+	<!-- js -->
+	<script src="{{ url_for('static', filename='vendors/scripts/core.js') }}"></script>
+	<script src="{{ url_for('static', filename='vendors/scripts/script.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='vendors/scripts/process.js') }}"></script>
+	<script src="{{ url_for('static', filename='vendors/scripts/layout-settings.js') }}"></script>
+	<script src="{{ url_for('static', filename='vendors/scripts/dashboard.js') }}"></script>
+	
+	<!-- Progress Bar Animation -->
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const progressBar = document.getElementById('progressBar');
+			const preloader = document.querySelector('.pre-loader');
+			
+			if (progressBar && preloader) {
+				let progress = 0;
+				const interval = setInterval(() => {
+					progress += Math.random() * 15; // Random increment between 0-15
+					
+					if (progress > 100) {
+						progress = 100;
+					}
+					
+					progressBar.style.width = progress + '%';
+					
+					if (progress >= 100) {
+						clearInterval(interval);
+						// Hide preloader after a short delay
+						setTimeout(() => {
+							preloader.style.opacity = '0';
+							setTimeout(() => {
+								preloader.style.display = 'none';
+							}, 300);
+						}, 500);
+					}
+				}, 100); // Update every 100ms
+			}
+		});
+	</script>
+	
+	<!-- Auto-dismiss Flash Messages -->
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Auto-dismiss flash messages after 4 seconds
+			const flashMessages = document.querySelectorAll('.notification-toast');
+			flashMessages.forEach(function(alert) {
+				setTimeout(function() {
+					if (alert && alert.parentNode) {
+						$(alert).alert('close');
+					}
+				}, 4000); // 4 seconds
+			});
+			
+			// Also handle manual dismiss
+			$('.notification-toast .close').on('click', function() {
+				$(this).closest('.alert').alert('close');
+			});
+		});
+	</script>
+	
+	<!-- CSRF Token Configuration for AJAX -->
+	<script>
+		// CSRF Token Helper for AJAX Requests
+		// Include this header in all AJAX POST requests:
+		// headers: { 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content }
+		
+		// jQuery AJAX setup to automatically include CSRF token
+		$.ajaxSetup({
+			beforeSend: function(xhr, settings) {
+				if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+					xhr.setRequestHeader("X-CSRFToken", $('meta[name="csrf-token"]').attr('content'));
+				}
+			}
+		});
+		
+		// Auto-hide flash messages after 4 seconds (except error messages)
+		$(document).ready(function() {
+			$('.auto-hide').each(function() {
+				const alert = $(this);
+				// Don't auto-hide error messages - they should stay visible
+				if (!alert.hasClass('alert-danger')) {
+					setTimeout(function() {
+						alert.fadeOut(500, function() {
+							alert.remove();
+						});
+					}, 4000);
+				}
+			});
+		});
+	</script>
+
+	<!-- Global Real-time Notification System -->
+	<script>
+		// Global notification system
+		let globalNotificationCount = 0;
+		let lastNotificationCheck = null;
+
+		$(document).ready(function() {
+			// Initialize notifications on page load
+			initializeGlobalNotifications();
+			
+			// Force show notification buttons immediately and continuously
+			function forceShowButtons() {
+				$('#notificationButtons').css('display', 'block !important').show();
+				console.log('[FORCE] Buttons forced to show');
+			}
+			
+			// Show immediately
+			forceShowButtons();
+			
+			// Show every 1 second to ensure they stay visible
+			setInterval(forceShowButtons, 1000);
+		});
+
+		function initializeGlobalNotifications() {
+			// Load initial notifications
+			loadGlobalNotifications();
+			
+			// Set up polling for real-time updates every 3 seconds
+			setInterval(function() {
+				loadGlobalNotifications();
+			}, 3000);
+		}
+
+		function loadGlobalNotifications() {
+			$.ajax({
+				url: '/notifications/api/notifications',
+				method: 'GET',
+				xhrFields: {
+					withCredentials: true
+				},
+				success: function(data) {
+					console.log('[OK] Notifications loaded:', data);
+					console.log('[DEBUG] Data structure:', JSON.stringify(data, null, 2));
+					const previousCount = globalNotificationCount;
+					globalNotificationCount = data.unread_count || 0;
+					
+					// Check if new notifications arrived
+					if (previousCount > 0 && globalNotificationCount > previousCount) {
+						// New notification arrived, show toast
+						const latestNotification = data.notifications[0];
+						if (latestNotification) {
+							showNewNotificationToast(latestNotification);
+						}
+					}
+					
+					updateGlobalNotificationBadge();
+					displayGlobalNotifications(data.notifications);
+					
+					// Force show buttons if notifications exist
+					if (data.notifications && data.notifications.length > 0) {
+						setTimeout(function() {
+							forceShowNotificationButtons();
+						}, 100);
+					}
+				},
+				error: function(xhr, status, error) {
+					// Silently fail if not logged in or endpoint doesn't exist yet
+					console.log('[WARNING] Failed to load notifications (this is normal if not logged in)');
+				}
+			});
+		}
+
+		function updateGlobalNotificationBadge() {
+			console.log('[DEBUG] updateGlobalNotificationBadge called with count:', globalNotificationCount);
+			const badge = $('#notificationBadge');
+			const notificationButtons = $('#notificationButtons');
+			const noNotificationsMsg = $('#noNotificationsMessage');
+			
+			console.log('[DEBUG] Badge element found:', badge.length > 0);
+			console.log('[DEBUG] Notification Buttons element found:', notificationButtons.length > 0);
+			console.log('[DEBUG] No notifications message found:', noNotificationsMsg.length > 0);
+			
+			if (globalNotificationCount > 0) {
+				badge.text(globalNotificationCount).show();
+				notificationButtons.show();
+				noNotificationsMsg.hide();
+				console.log('[DEBUG] Badge updated with count:', globalNotificationCount);
+				console.log('[DEBUG] Notification buttons should be visible now');
+			} else {
+				badge.hide();
+				notificationButtons.hide();
+				noNotificationsMsg.show();
+				console.log('[DEBUG] Badge hidden, showing no notifications message');
+			}
+		}
+
+		// Force show notification buttons (backup function)
+		function forceShowNotificationButtons() {
+			console.log('[FORCE] Attempting to force show notification buttons...');
+			const notificationButtons = $('#notificationButtons');
+			if (notificationButtons.length > 0) {
+				notificationButtons.css('display', 'block !important');
+				notificationButtons.show();
+				console.log('[FORCE] Notification buttons forced to show');
+			} else {
+				console.log('[FORCE] Notification buttons element not found!');
+			}
+		}
+
+		function displayGlobalNotifications(notifications) {
+			const container = $('#notificationsContainer');
+			const noNotificationsMsg = $('#noNotificationsMessage');
+			
+			if (notifications.length === 0) {
+				// Remove any existing notification items
+				container.find('.notification-item').remove();
+				noNotificationsMsg.show();
+				return;
+			}
+
+			// Hide "no notifications" message
+			noNotificationsMsg.hide();
+			
+			// Build notifications HTML
+			let notificationsHtml = '';
+			notifications.forEach(function(notification) {
+				const icon = notification.type === 'appointment' ? 'bi-calendar-plus' : 'bi-bell';
+				const iconColor = notification.type === 'appointment' ? '#007bff' : '#6c757d';
+				
+				notificationsHtml += `
+					<div class="notification-item" style="border-bottom: 1px solid #e9ecef; transition: background-color 0.2s;">
+						<a href="#" onclick="handleNotificationClick(event, ${notification.id}, '${notification.redirect_url || 'null'}'); return false;" 
+						   style="display: block; padding: 12px 16px; text-decoration: none; color: inherit;"
+						   onmouseover="this.parentElement.style.backgroundColor='#f8f9fa'"
+						   onmouseout="this.parentElement.style.backgroundColor='white'">
+							<div style="display: flex; align-items: start;">
+								<i class="bi ${icon}" style="font-size: 20px; color: ${iconColor}; margin-right: 12px; margin-top: 2px;"></i>
+								<div style="flex: 1; min-width: 0;">
+									<h6 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #212529;">${notification.title}</h6>
+									<p style="margin: 0 0 4px 0; font-size: 12px; color: #6c757d; line-height: 1.4;">${notification.message}</p>
+									<small style="color: #adb5bd; font-size: 11px;">
+										<i class="bi bi-clock" style="margin-right: 4px;"></i>${notification.time_ago}
+									</small>
+								</div>
+							</div>
+						</a>
+					</div>
+				`;
+			});
+			
+			// Remove old notifications and add new ones
+			container.find('.notification-item').remove();
+			container.prepend(notificationsHtml);
+		}
+
+		function handleNotificationClick(event, notificationId, redirectUrl) {
+			event.preventDefault();
+			
+			// Mark notification as read
+			$.ajax({
+				url: `/notifications/api/notifications/${notificationId}/read`,
+				method: 'POST',
+				success: function() {
+					console.log('[OK] Notification marked as read');
+					// Reload notifications to update badge
+					loadGlobalNotifications();
+					// Only redirect if redirectUrl is provided and not null
+					if (redirectUrl && redirectUrl !== 'null' && redirectUrl !== 'undefined') {
+						window.location.href = redirectUrl;
+					}
+					// If no redirect URL, just mark as read and do nothing else
+				},
+				error: function(xhr) {
+					console.error('[ERROR] Failed to mark notification as read:', xhr.responseText);
+					// Only redirect if redirectUrl is provided and not null
+					if (redirectUrl && redirectUrl !== 'null' && redirectUrl !== 'undefined') {
+						window.location.href = redirectUrl;
+					}
+				}
+			});
+		}
+
+		function markAllNotificationsRead() {
+			$.ajax({
+				url: '/notifications/api/notifications/mark-all-read',
+				method: 'POST',
+				success: function() {
+					console.log('[OK] All notifications marked as read');
+					// Reload notifications
+					loadGlobalNotifications();
+					// Show success message
+					alert('All notifications marked as read');
+				},
+				error: function(xhr) {
+					console.error('[ERROR] Failed to mark all notifications as read:', xhr.responseText);
+					alert('Failed to mark notifications as read');
+				}
+			});
+		}
+
+		function deleteAllNotifications() {
+			if (confirm('Are you sure you want to delete ALL notifications? This action cannot be undone.')) {
+				$.ajax({
+					url: '/notifications/api/notifications/delete-all',
+					method: 'POST',
+					success: function() {
+						console.log('[OK] All notifications deleted');
+						// Reload notifications
+						loadGlobalNotifications();
+						// Show success message
+						alert('All notifications deleted successfully');
+					},
+					error: function(xhr) {
+						console.error('[ERROR] Failed to delete all notifications:', xhr.responseText);
+						alert('Failed to delete notifications');
+					}
+				});
+			}
+		}
+
+		function showNewNotificationToast(notification) {
+			// Only show toast for new notifications, not on page load
+			if (!lastNotificationCheck) {
+				lastNotificationCheck = new Date();
+				return;
+			}
+			
+			const toastHtml = `
+				<div class="toast-notification" style="position: fixed; top: 80px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 20px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: 380px; animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+					<div style="display: flex; align-items: start;">
+						<i class="bi bi-bell-fill" style="font-size: 24px; margin-right: 12px;"></i>
+						<div style="flex: 1;">
+							<div style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">${notification.title}</div>
+							<div style="font-size: 13px; opacity: 0.95; line-height: 1.4;">${notification.message}</div>
+						</div>
+						<button onclick="this.closest('.toast-notification').remove()" style="background: none; border: none; color: white; font-size: 22px; cursor: pointer; opacity: 0.8; padding: 0; margin-left: 8px; line-height: 1;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">&times;</button>
+					</div>
+				</div>
+			`;
+			
+			$('body').append(toastHtml);
+			
+			// Auto-remove after 6 seconds with fade out
+			setTimeout(function() {
+				$('.toast-notification').addClass('fade-out');
+				setTimeout(function() {
+					$('.toast-notification').remove();
+				}, 300);
+			}, 6000);
+		}
+	</script>
+
+	<!-- Prevent back button after logout -->
+	<script>
+		// Check if user is authenticated
+		{% if is_authenticated %}
+		// User is logged in - prevent back button after logout
+		(function() {
+			window.history.pushState(null, "", window.location.href);
+			window.onpopstate = function() {
+				window.history.pushState(null, "", window.location.href);
+			};
+		})();
+		{% endif %}
+	</script>
+
+	<!-- Auto logout when browser/tab closes -->
+	<script>
+		{% if is_authenticated %}
+		(function() {
+			// Mark that user is currently on the page
+			sessionStorage.setItem('watch_session_active', 'true');
+			
+			// Handle page unload (tab close, browser close, navigation away)
+			window.addEventListener('beforeunload', function(e) {
+				// Send logout request when user closes tab/browser
+				// Use sendBeacon for reliability (works even as page unloads)
+				const csrfToken = document.querySelector('meta[name="csrf-token"]');
+				const formData = new FormData();
+				if (csrfToken) {
+					formData.append('csrf_token', csrfToken.content);
+				}
+				
+				// Send asynchronous logout request
+				navigator.sendBeacon('{{ url_for("auth.auto_logout") }}', formData);
+			});
+			
+			// Clear session storage when page loads (in case of browser crash recovery)
+			window.addEventListener('load', function() {
+				// If session was not properly closed, mark as inactive
+				if (sessionStorage.getItem('watch_session_active') === 'true') {
+					sessionStorage.setItem('watch_session_active', 'false');
+				}
+			});
+			
+			// Handle visibility change (tab switching, minimizing)
+			document.addEventListener('visibilitychange', function() {
+				if (document.hidden) {
+					// User switched away from tab - mark as potentially closing
+					sessionStorage.setItem('watch_tab_hidden', Date.now().toString());
+				} else {
+					// User returned to tab
+					sessionStorage.removeItem('watch_tab_hidden');
+				}
+			});
+		})();
+		{% endif %}
+	</script>
+
+	{% block extra_js %}{% endblock %}
+	
+	<!-- Session Timeout Management -->
+	<script src="{{ url_for('static', filename='js/session-timeout.js') }}"></script>
+</body>
+</html>

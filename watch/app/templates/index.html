@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+	<p>Web-based Attendance Tracking and Case Handling System</p>
+	<p>Status: <span id="health">checking...</span></p>
+</section>
+<script>
+fetch('/api/health').then(r=>r.json()).then(d=>{
+	document.getElementById('health').textContent = d.status + ' (' + d.env + ')';
+}).catch(()=>{
+	document.getElementById('health').textContent = 'unreachable';
+});
+</script>
+{% endblock %}
+
+

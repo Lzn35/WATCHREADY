@@ -1,0 +1,1343 @@
+{% extends "base.html" %}
+
+{% block title %}Major Cases - Staff - WATCH{% endblock %}
+
+{% block extra_css %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+
+<style>
+/* Remove table row highlighting */
+.table tbody tr:hover {
+	background-color: transparent !important;
+}
+
+.table tbody tr:nth-child(even) {
+	background-color: transparent !important;
+}
+
+.table tbody tr:nth-child(odd) {
+	background-color: transparent !important;
+}
+
+/* Remove DataTables default styling */
+table.dataTable tbody tr:hover {
+	background-color: transparent !important;
+}
+
+table.dataTable tbody tr.odd {
+	background-color: transparent !important;
+}
+
+table.dataTable tbody tr.even {
+	background-color: transparent !important;
+}
+
+/* Custom dropdown styling for offense categories */
+.form-control.custom-select,
+select.custom-select {
+	border: 1px solid #dee2e6 !important;
+	border-radius: 0.375rem !important;
+	padding: 0.375rem 0.75rem !important;
+	background-color: #fff !important;
+	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
+	background-repeat: no-repeat !important;
+	background-position: right 0.75rem center !important;
+	background-size: 16px 12px !important;
+	appearance: none !important;
+	-webkit-appearance: none !important;
+	-moz-appearance: none !important;
+	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.form-control.custom-select:focus,
+select.custom-select:focus {
+	border-color: #80bdff !important;
+	outline: 0 !important;
+	box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.form-control.custom-select:disabled,
+select.custom-select:disabled {
+	background-color: #e9ecef !important;
+	opacity: 1 !important;
+}
+
+/* Enhanced dropdown options styling */
+.form-control.custom-select option,
+select.custom-select option {
+	padding: 8px 12px;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.form-control.custom-select option:hover,
+select.custom-select option:hover {
+	background-color: #f8f9fa;
+}
+
+.form-control.custom-select option:checked,
+select.custom-select option:checked {
+	background-color: #007bff;
+	color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-3">
+		<div class="pull-left">
+			<h4 class="text-red h4">
+				<i class="bi bi-exclamation-triangle" style="margin-right: 8px;"></i>
+				Major Cases - Staff
+			</h4>
+		</div>
+	</div>
+	
+	<!-- Search and Actions Row -->
+	<div class="d-flex justify-content-between align-items-end mb-3" style="gap: 15px;">
+		<!-- Search Section -->
+		<div class="flex-grow-1" style="max-width: 300px;">
+			<div class="form-group mb-0">
+				<label for="searchInput" class="mb-1">Search name:</label>
+				<input type="text" class="form-control" id="searchInput" placeholder="Enter name to search...">
+			</div>
+		</div>
+		
+		<!-- Action Buttons -->
+		<div class="d-flex align-items-end" style="gap: 10px;">
+			<button class="btn btn-success" onclick="generateReport()">
+				<i class="bi bi-file-earmark-pdf" style="margin-right: 5px;"></i>Generate Report
+			</button>
+			<button class="btn btn-danger" data-toggle="modal" data-target="#addCaseModal">
+				<i class="bi bi-plus-circle" style="margin-right: 5px;"></i>Add Staff Case
+			</button>
+		</div>
+	</div>
+	
+	
+	<div class="table-responsive">
+		<table id="casesTable" class="table table-striped table-bordered" style="width:100%">
+			<thead>
+				<tr>
+					<th>Staff Name</th>
+					<th>Position</th>
+					<th>Major Cases Count</th>
+					<th>Latest Case Date</th>
+					<th>Attachment</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody id="personsTableBody">
+				<!-- Data will be loaded via JavaScript -->
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<!-- Add Case Modal -->
+<div class="modal fade" id="addCaseModal" tabindex="-1" role="dialog" aria-labelledby="addCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header bg-danger text-white">
+				<h5 class="modal-title" id="addCaseModalLabel">
+					<i class="bi bi-plus-circle" style="margin-right: 8px;"></i>Add New Staff Case
+				</h5>
+				<button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form method="POST" action="{{ url_for('cases.add_major_case', entity_type='staff') }}" enctype="multipart/form-data">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+									<div class="modal-body">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="last_name">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="last_name" name="last_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="first_name">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="first_name" name="first_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="program_or_dept">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="program_or_dept" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="date">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="date" name="date" max="{{ today }}" required>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="category">Major Offense Category <span class="text-danger">*</span></label>
+								<select class="form-control custom-select" id="category" name="category" required>
+									<option value="">Select Category</option>
+									<option value="A">Category A — Academic Integrity</option>
+									<option value="B">Category B — Respect & Conduct</option>
+									<option value="C">Category C — Serious Misconduct</option>
+									<option value="D">Category D — Criminal Acts</option>
+								</select>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="offense">Specific Offense <span class="text-danger">*</span></label>
+								<select class="form-control custom-select" id="offense" name="offense" required disabled>
+									<option value="">Select an offense</option>
+								</select>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="ocr_extract">Quick Fill Options</label>
+								<div class="btn-group" role="group">
+									<button type="button" class="btn btn-outline-info" id="ocrExtractBtn">
+										<i class="bi bi-camera" style="margin-right: 5px;"></i>OCR Extract
+									</button>
+									<button type="button" class="btn btn-outline-secondary" id="clearFormBtn">
+										<i class="bi bi-arrow-clockwise" style="margin-right: 5px;"></i>Clear
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="description">
+							<i class="bi bi-file-text" style="margin-right: 5px;"></i>Description
+							<small class="text-muted">(What happened? Details of the incident)</small>
+						</label>
+						<textarea class="form-control" id="description" name="description" rows="4" maxlength="1000" placeholder="Enter detailed description of the incident..."></textarea>
+					</div>
+					<div class="form-group">
+						<label for="remarks">
+							<i class="bi bi-chat-dots" style="margin-right: 5px;"></i>Remarks
+							<small class="text-muted">(Additional notes, actions taken, or comments)</small>
+						</label>
+						<textarea class="form-control" id="remarks" name="remarks" rows="4" maxlength="1000" placeholder="Enter additional remarks or notes..."></textarea>
+					</div>
+					<!-- File Upload Section for Major Cases Only -->
+					<div class="form-group">
+						<label for="attachment">
+							<i class="bi bi-paperclip" style="margin-right: 5px;"></i>Attachment
+							<small class="text-muted">(Optional - PDF, DOC, Images, etc. Max 10MB)</small>
+						</label>
+						<input type="file" class="form-control-file" id="attachment" name="attachment" 
+							   accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.mp4,.avi,.mov,.wmv,.mp3,.wav,.zip,.rar,.7z">
+						<small class="form-text text-muted">
+							Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG, MP4, MP3, ZIP, etc.
+						</small>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-danger">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Add Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- OCR Upload Modal -->
+<div class="modal fade" id="ocrUploadModal" tabindex="-1" role="dialog" aria-labelledby="ocrUploadModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header bg-info text-white">
+				<h5 class="modal-title" id="ocrUploadModalLabel">
+					<i class="bi bi-camera" style="margin-right: 8px;"></i>OCR Extract - Upload Staff Report
+				</h5>
+				<button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="alert alert-info">
+					<i class="bi bi-info-circle" style="margin-right: 5px;"></i>
+					<strong>Upload a staff report</strong> (image or PDF) to automatically extract staff information.
+				</div>
+
+				<div class="form-group">
+					<label for="ocrFileInput">
+						Select File <span class="text-danger">*</span>
+						<small class="text-muted">(PNG, JPG, PDF, DOCX)</small>
+					</label>
+					<div class="custom-file">
+						<input type="file" class="custom-file-input" id="ocrFileInput" accept=".png,.jpg,.jpeg,.pdf,.docx">
+						<label class="custom-file-label" for="ocrFileInput">Choose file...</label>
+					</div>
+					<small class="form-text text-muted">Maximum file size: 10MB</small>
+				</div>
+
+				<div id="ocrPreview" class="mt-3" style="display: none;">
+					<div class="alert alert-success">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>
+						File selected: <strong id="ocrFileName"></strong>
+					</div>
+				</div>
+
+				<div id="ocrProgress" class="mt-3" style="display: none;">
+					<div class="progress">
+						<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+							Extracting...
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-info" id="ocrExtractNowBtn" disabled>
+					<i class="bi bi-magic" style="margin-right: 5px;"></i>Extract Details
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Person Modal -->
+<div class="modal fade" id="editPersonModal" tabindex="-1" role="dialog" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPersonModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Person Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editPersonForm">
+				<div class="modal-body">
+					<input type="hidden" id="editPersonId" name="person_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonFirstName">First Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonFirstName" name="first_name" required maxlength="100">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonLastName">Last Name <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonLastName" name="last_name" required maxlength="100">
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editPersonProgram">Position <span class="text-danger">*</span></label>
+								<input type="text" class="form-control" id="editPersonProgram" name="program_or_dept" required maxlength="100">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" id="updatePersonBtn">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Person
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Person Cases Modal -->
+<div class="modal fade" id="personCasesModal" tabindex="-1" role="dialog" aria-labelledby="personCasesModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-xl" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="personCasesModalLabel">
+					<i class="bi bi-list-ul" style="margin-right: 8px;"></i>Major Cases for Staff Member
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="personInfo">
+					<!-- Person information will be loaded here -->
+				</div>
+				<hr>
+				<h6><i class="bi bi-list-ul" style="margin-right: 5px;"></i>Major Cases</h6>
+				<div id="casesList">
+					<!-- Cases will be loaded here -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" role="dialog" aria-labelledby="editCaseModalLabel" aria-hidden="true" style="z-index: 1060;">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCaseModalLabel">
+					<i class="bi bi-pencil" style="margin-right: 8px;"></i>Edit Case Information
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<form id="editCaseForm">
+				<div class="modal-body">
+					<input type="hidden" id="editCaseId" name="case_id">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDate">Date <span class="text-danger">*</span></label>
+								<input type="date" class="form-control" id="editCaseDate" name="date" required>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="editCaseDescription">Description</label>
+								<input type="text" class="form-control" id="editCaseDescription" name="description" maxlength="200">
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="editCaseRemarks">Remarks</label>
+						<textarea class="form-control" id="editCaseRemarks" name="remarks" rows="3" maxlength="500"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-primary" onclick="submitEditForm()">
+						<i class="bi bi-check-circle" style="margin-right: 5px;"></i>Update Case
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Person Confirmation Modal -->
+<div class="modal fade" id="deletePersonModal" tabindex="-1" role="dialog" aria-labelledby="deletePersonModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletePersonModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Person
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deletePersonId" name="person_id">
+				<p>Are you sure you want to delete this person and all their cases?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the person and all associated cases.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeletePerson()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Person
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Delete Case Confirmation Modal -->
+<div class="modal fade" id="deleteCaseModal" tabindex="-1" role="dialog" aria-labelledby="deleteCaseModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deleteCaseModalLabel">
+					<i class="bi bi-exclamation-triangle text-danger" style="margin-right: 8px;"></i>Confirm Delete Case
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<input type="hidden" id="deleteCaseId" name="case_id">
+				<p>Are you sure you want to delete this case?</p>
+				<div class="alert alert-warning">
+					<strong>Warning:</strong> This action will permanently delete the case record.
+				</div>
+				<p class="text-danger"><strong>This action cannot be undone!</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" onclick="confirmDeleteCase()">
+					<i class="bi bi-trash" style="margin-right: 5px;"></i>Delete Case
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- DataTables JS -->
+<script src="{{ url_for('static', filename='plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/dataTables.responsive.min.js') }}"></script>
+<script src="{{ url_for('static', filename='plugins/datatables/js/responsive.bootstrap4.min.js') }}"></script>
+
+<script>
+$(document).ready(function() {
+	// Initialize DataTable with error handling
+	var tableElement = $('#casesTable');
+	if (tableElement.length > 0) {
+	try {
+			var table = tableElement.DataTable({
+			"responsive": true,
+			"paging": false, // Disable pagination
+			"info": false, // Hide info text
+			"lengthChange": false, // Hide "Show X entries" dropdown
+			"searching": false, // Disable built-in search
+			"ordering": false, // Disable sorting completely
+			"language": {
+				"infoEmpty": "No cases available",
+				"infoFiltered": ""
+			}
+		});
+		
+		// Custom search functionality
+			var searchInput = $('#searchInput');
+			if (searchInput.length > 0) {
+				searchInput.on('keyup', function() {
+			var searchTerm = this.value.toLowerCase();
+			console.log('Search input changed:', searchTerm);
+			filterTable(searchTerm);
+		});
+			}
+	} catch (error) {
+			console.log('DataTables initialization failed:', error);
+		}
+	} else {
+		console.log('Table #casesTable not found, skipping DataTables initialization');
+	}
+	
+	// Set today's date as default for new cases
+	var dateInput = document.getElementById('date');
+	if (dateInput) {
+		dateInput.value = new Date().toISOString().split('T')[0];
+	}
+	
+	// Dynamic dropdown for major offense categories - Clean implementation
+	const offenseMap = {
+		A: [
+			"Repeated Minor Offense",
+			"Tampered or Borrowed ID",
+			"Smoking Inside Campus",
+			"Intoxication or Liquor",
+			"Unauthorized Entry",
+			"Cheating"
+		],
+		B: [
+			"Vandalism",
+			"Disrespectful Online Post",
+			"Privacy Violation",
+			"Ill Repute Places",
+			"False Testimony",
+			"Grave Insult"
+		],
+		C: [
+			"Hacking",
+			"Forgery",
+			"Theft",
+			"Unauthorized Material Use",
+			"Embezzlement",
+			"Illegal Assembly",
+			"Immorality",
+			"Bullying",
+			"Brawling",
+			"Physical Assault",
+			"Drug Use",
+			"False Alarm",
+			"Fire Equipment Misuse"
+		],
+		D: [
+			"Drug Possession",
+			"Repeat Drug Use",
+			"Possession of Firearm",
+			"Illegal Fraternity",
+			"Hazing",
+			"Crime Involving Morality",
+			"Sexual Harassment",
+			"Subversion or Sedition"
+		]
+	};
+
+	document.getElementById("category").addEventListener("change", function() {
+		const category = this.value;
+		const offenseSelect = document.getElementById("offense");
+		offenseSelect.innerHTML = '<option value="">Select an offense</option>';
+		offenseSelect.disabled = !category;
+		if (category && offenseMap[category]) {
+			offenseMap[category].forEach(offense => {
+				const opt = document.createElement("option");
+				opt.textContent = offense;
+				opt.value = offense;
+				offenseSelect.appendChild(opt);
+			});
+		}
+	});
+	
+	// OCR Extract - Open Upload Modal
+	$('#ocrExtractBtn').click(function() {
+		// Reset the modal
+		$('#ocrFileInput').val('');
+		$('#ocrPreview').hide();
+		$('#ocrProgress').hide();
+		$('#ocrExtractNowBtn').prop('disabled', true);
+		$('.custom-file-label').text('Choose file...');
+		
+		// Show the OCR Upload Modal
+		$('#ocrUploadModal').modal('show');
+	});
+	
+	// Enhanced modal scroll fixes
+	$('#ocrUploadModal').on('shown.bs.modal', function() {
+		// Allow modal body to scroll if content is too tall
+		$('.modal-body').css('max-height', '70vh');
+		$('.modal-body').css('overflow-y', 'auto');
+		// Ensure body can scroll if modal content is too tall
+		$('body').css('overflow', 'auto');
+	});
+	
+	$('#ocrUploadModal').on('hidden.bs.modal', function() {
+		// Restore body scroll
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		// Remove any backdrop
+		$('.modal-backdrop').remove();
+		// Reset modal body styles
+		$('.modal-body').css('max-height', '');
+		$('.modal-body').css('overflow-y', '');
+	});
+	
+	// Global fix for all modals to prevent scroll freezing
+	$(document).on('hidden.bs.modal', '.modal', function() {
+		// Restore body scroll for any modal
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		// Remove any backdrop
+		$('.modal-backdrop').remove();
+		// Reset modal body styles
+		$('.modal-body').css('max-height', '');
+		$('.modal-body').css('overflow-y', '');
+	});
+	
+	// Ensure body scroll is restored when page loads
+	$(document).ready(function() {
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		$('.modal-backdrop').remove();
+	});
+	
+	// Additional fix for modal backdrop issues
+	$(document).on('click', '.modal-backdrop', function() {
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		$(this).remove();
+	});
+	
+	// Global fix for all modals to prevent scroll freezing
+	$(document).on('hidden.bs.modal', '.modal', function() {
+		// Restore body scroll for any modal
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		// Remove any backdrop
+		$('.modal-backdrop').remove();
+	});
+	
+	// Ensure body scroll is restored when page loads
+	$(document).ready(function() {
+		$('body').css('overflow', 'auto');
+		$('body').removeClass('modal-open');
+		$('.modal-backdrop').remove();
+	});
+	
+	// Clear form functionality
+	$('#clearFormBtn').click(function() {
+		$('#addCaseModal form')[0].reset();
+		document.getElementById('date').value = new Date().toISOString().split('T')[0];
+	});
+
+	// Handle file selection
+	$('#ocrFileInput').on('change', function(e) {
+		const file = e.target.files[0];
+		if (file) {
+			// Update label
+			$('.custom-file-label').text(file.name);
+
+			// Show preview
+			$('#ocrFileName').text(file.name);
+			$('#ocrPreview').show();
+
+			// Enable extract button
+			$('#ocrExtractNowBtn').prop('disabled', false);
+		} else {
+			$('#ocrPreview').hide();
+			$('#ocrExtractNowBtn').prop('disabled', true);
+		}
+	});
+
+	// Handle OCR extraction
+	$('#ocrExtractNowBtn').click(function() {
+		const fileInput = $('#ocrFileInput')[0];
+		const file = fileInput.files[0];
+
+		if (!file) {
+			alert('Please select a file first.');
+			return;
+		}
+
+		// Show progress
+		$('#ocrProgress').show();
+		$('#ocrExtractNowBtn').prop('disabled', true);
+
+		// For now, we'll use a textarea for manual input since OCR libraries need to be integrated
+		// This is a placeholder for the OCR functionality
+		const ocrText = prompt('Please paste the extracted text from the complaint letter:');
+
+		if (ocrText && ocrText.trim()) {
+			// Call our new OCR extraction API
+			$.ajax({
+				url: '{{ url_for("cases.extract_ocr_data") }}',
+				type: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify({ text: ocrText, entity_type: 'staff' }),
+				success: function(response) {
+					$('#ocrProgress').hide();
+					$('#ocrExtractNowBtn').prop('disabled', false);
+
+					if (response.success) {
+						const data = response.data;
+
+						// Fill form fields with extracted data
+						if (data.first_name) {
+							$('#first_name').val(data.first_name);
+						}
+						if (data.last_name) {
+							$('#last_name').val(data.last_name);
+						}
+						if (data.position) {
+							$('#program_or_dept').val(data.position);
+						}
+						if (data.category) {
+							$('#category').val(data.category);
+							// Trigger category change to populate specific offense
+							$('#category').trigger('change');
+						}
+						if (data.specific_offense) {
+							$('#offense').val(data.specific_offense);
+						}
+						if (data.description) {
+							$('#description').val(data.description);
+						}
+
+						// Show extraction results
+						let message = 'Staff data extracted successfully!\n\n';
+						message += `Confidence: ${(data.extraction_confidence * 100).toFixed(0)}%\n\n`;
+						message += 'Extracted Fields:\n';
+						if (data.first_name) message += `• First Name: ${data.first_name}\n`;
+						if (data.last_name) message += `• Last Name: ${data.last_name}\n`;
+						if (data.position) message += `• Position: ${data.position}\n`;
+						if (data.category) message += `• Category: ${data.category}\n`;
+						if (data.specific_offense) message += `• Specific Offense: ${data.specific_offense}\n`;
+
+						if (response.validation && response.validation.errors.length > 0) {
+							message += '\nValidation Warnings:\n';
+							response.validation.errors.forEach(error => {
+								message += `• ${error}\n`;
+							});
+						}
+
+						alert(message);
+						$('#ocrUploadModal').modal('hide');
+					} else {
+						alert('Failed to extract data from the text. Please try again or fill the form manually.');
+					}
+				},
+				error: function(xhr, status, error) {
+					$('#ocrProgress').hide();
+					$('#ocrExtractNowBtn').prop('disabled', false);
+					console.error('OCR extraction error:', xhr.responseText);
+					alert('Error extracting data: ' + (xhr.responseJSON?.error || 'Unknown error'));
+				}
+			});
+		} else {
+			$('#ocrProgress').hide();
+			$('#ocrExtractNowBtn').prop('disabled', false);
+		}
+	});
+});
+
+// Notification function
+function showNotification(type, title, message) {
+	const bgColor = type === 'success' ? 'bg-success' : 'bg-danger';
+	const icon = type === 'success' ? 'bi-check-circle' : 'bi-x-circle';
+	const autoDismiss = type === 'success' ? 5000 : 10000; // Errors stay longer
+
+	const notification = $(`
+		<div class="alert ${bgColor} text-white alert-dismissible fade show" role="alert"
+			 style="position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 350px; max-width: 500px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+			<h5><i class="bi ${icon}"></i> ${title}</h5>
+			<div class="mb-0">${message}</div>
+			<button type="button" class="close text-white" data-dismiss="alert">
+				<span>&times;</span>
+			</button>
+		</div>
+	`);
+
+	$('body').append(notification);
+
+	// Auto dismiss
+	setTimeout(function() {
+		notification.alert('close');
+	}, autoDismiss);
+}
+
+// Store original data for filtering
+var originalPersonsData = [];
+
+// Load persons with case counts
+function loadPersonsWithCases() {
+	$.get('{{ url_for("cases.get_persons_api") }}?role=staff&_=' + Date.now())
+		.done(function(data) {
+			originalPersonsData = data;
+			updatePersonsTable(data);
+		})
+		.fail(function() {
+			alert('Error loading persons data');
+		});
+}
+
+// Filter table based on search term
+function filterTable(searchTerm) {
+	console.log('filterTable called with:', searchTerm);
+	console.log('originalPersonsData:', originalPersonsData);
+	
+	if (!searchTerm) {
+		// If no search term, show all data
+		updatePersonsTable(originalPersonsData);
+		return;
+	}
+	
+	// Filter data based on staff name - only among those with major cases
+	var filteredData = originalPersonsData.filter(function(person) {
+		var hasMajorCases = person.major_count > 0;
+		var nameMatches = person.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+		var matches = hasMajorCases && nameMatches;
+		console.log('Checking:', person.full_name, 'against', searchTerm, 'hasMajorCases:', hasMajorCases, 'nameMatches:', nameMatches, 'total matches:', matches);
+		return matches;
+	});
+	
+	console.log('Filtered data:', filteredData);
+	updatePersonsTable(filteredData);
+}
+
+function updatePersonsTable(persons) {
+	var tableBody = $('#personsTableBody');
+	tableBody.empty();
+	
+	persons.forEach(function(person) {
+		// Only show persons with major cases
+		if (person.major_count > 0) {
+			var row = '<tr style="background-color: transparent !important;">' +
+				'<td><span class="person-name-clickable" style="cursor: pointer; color: #007bff; text-decoration: underline;" onclick="viewPersonCases(' + person.id + ')">' + person.full_name + '</span></td>' +
+				'<td>' + person.program_or_dept + '</td>' +
+				'<td><span style="color: #000; font-weight: bold;">' + person.major_count + '</span></td>' +
+				'<td id="latest-date-' + person.id + '">-</td>' +
+				'<td id="attachment-info-' + person.id + '">-</td>' +
+				'<td>' +
+					'<button class="btn btn-sm btn-outline-warning" onclick="editPerson(' + person.id + ')" title="Edit Person" style="margin-right: 5px;">' +
+						'<i class="bi bi-pencil"></i>' +
+					'</button>' +
+					'<button class="btn btn-sm btn-outline-danger" onclick="deletePerson(' + person.id + ')" title="Delete Person">' +
+						'<i class="bi bi-trash"></i>' +
+					'</button>' +
+				'</td>' +
+				'</tr>';
+			tableBody.append(row);
+			
+		// Load latest case date and attachment info
+		loadLatestCaseDate(person.id);
+		loadAttachmentInfo(person.id);
+		}
+	});
+}
+
+function loadLatestCaseDate(personId) {
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=major')
+		.done(function(data) {
+			if (data.cases.length > 0) {
+				var latestCase = data.cases[0]; // Cases are ordered by date desc
+				$('#latest-date-' + personId).text(latestCase.date_reported);
+			}
+		});
+}
+
+function loadAttachmentInfo(personId) {
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=major')
+		.done(function(data) {
+			if (data.cases.length > 0) {
+				var latestCase = data.cases[0]; // Cases are ordered by date desc
+				if (latestCase.attachment_filename) {
+					var attachmentHtml = '<span class="badge badge-success">' +
+						'<i class="bi bi-paperclip" style="margin-right: 3px;"></i>' +
+						'<a href="{{ url_for("cases.download_attachment", case_id=0) }}'.replace('0', latestCase.id) + '" target="_blank" style="color: white; text-decoration: none;">' +
+						latestCase.attachment_filename + '</a></span>';
+					$('#attachment-info-' + personId).html(attachmentHtml);
+				} else {
+					$('#attachment-info-' + personId).html('<span class="text-muted">No attachment</span>');
+				}
+			}
+		});
+}
+
+function viewPersonCases(personId) {
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=major')
+		.done(function(data) {
+			// Update modal title and person info
+			$('#personCasesModalLabel').html('<i class="bi bi-list-ul" style="margin-right: 8px;"></i>Major Cases for ' + data.person.full_name);
+			
+			var personInfo = '<div class="card">' +
+				'<div class="card-body">' +
+				'<h6 class="card-title">' + data.person.full_name + '</h6>' +
+				'<p class="card-text">' +
+				'<strong>Position:</strong> ' + data.person.program_or_dept + '<br>' +
+				'<strong>Section:</strong> ' + data.person.section +
+				'</p>' +
+				'</div>' +
+				'</div>';
+			
+		$('#personInfo').html(personInfo).data('person-id', personId);
+		
+		// Update cases list
+		var casesHtml = '';
+			if (data.cases.length === 0) {
+				casesHtml = '<div class="text-center text-muted py-4">No major cases found for this staff member.</div>';
+			} else {
+				data.cases.forEach(function(case_item) {
+					if (case_item.case_type === 'major') {
+						var attachmentHtml = '';
+						if (case_item.has_attachment) {
+							attachmentHtml = '<div class="mt-2">' +
+								'<span class="badge badge-info">' +
+								'<i class="bi bi-paperclip" style="margin-right: 3px;"></i>' +
+								'<a href="{{ url_for("cases.view_attachment", case_id=0) }}'.replace('0', case_item.id) + '" target="_blank" style="color: white; text-decoration: none;" title="View ' + case_item.attachment_filename + '">' +
+								case_item.attachment_filename + '</a>' +
+								'</span>' +
+								'</div>';
+						}
+						
+						casesHtml += '<div class="card mb-2">' +
+							'<div class="card-body">' +
+							'<div class="d-flex justify-content-between align-items-start mb-2">' +
+							'<div>' +
+							'<p class="card-text mb-1"><strong>Date:</strong> ' + case_item.date_reported + '</p>' +
+							(case_item.offense_category ? '<p class="card-text mb-1"><strong>Category:</strong> ' + case_item.offense_category + '</p>' : '') +
+							(case_item.offense_type ? '<p class="card-text mb-1"><strong>Specific Offense:</strong> ' + case_item.offense_type + '</p>' : '') +
+							(case_item.description ? '<p class="card-text mb-1"><strong>Description:</strong> ' + case_item.description + '</p>' : '') +
+							attachmentHtml +
+							'<small class="text-muted">Created: ' + case_item.created_at + '</small>' +
+							'</div>' +
+							'<div class="btn-group btn-group-sm" role="group">' +
+							'<button class="btn btn-outline-warning" onclick="editCaseInfo(' + case_item.id + ')" title="Edit Case">' +
+							'<i class="bi bi-pencil"></i>' +
+							'</button>' +
+							'<button class="btn btn-outline-danger" onclick="deleteCaseInfo(' + case_item.id + ')" title="Delete Case">' +
+							'<i class="bi bi-trash"></i>' +
+							'</button>' +
+							'</div>' +
+							'</div>' +
+							'</div>' +
+							'</div>';
+					}
+				});
+			}
+			
+			$('#casesList').html(casesHtml);
+			$('#personCasesModal').modal('show');
+		})
+		.fail(function() {
+			alert('Error loading person cases');
+		});
+}
+
+// Edit case info function (from modal)
+function editCaseInfo(caseId) {
+	// Get current case data and populate edit modal
+	$.get('{{ url_for("cases.get_case_api", case_id=0) }}'.replace('0', caseId))
+		.done(function(data) {
+			// Populate edit case modal
+			$('#editCaseDate').val(data.date_reported);
+			$('#editCaseDescription').val(data.description || '');
+			$('#editCaseRemarks').val(data.remarks || '');
+			$('#editCaseId').val(data.id);
+			
+			// Show edit modal
+			$('#editCaseModal').modal('show');
+		})
+		.fail(function(xhr) {
+			alert('Error loading case data');
+		});
+}
+
+// Delete case info function (from modal)
+function deleteCaseInfo(caseId) {
+	// Show delete confirmation modal
+	$('#deleteCaseId').val(caseId);
+	$('#deleteCaseModal').modal('show');
+}
+
+// Edit person function (from main table)
+function editPerson(personId) {
+	// Get person data and populate edit modal
+	$.get('{{ url_for("cases.get_person_api", person_id=0) }}'.replace('0', personId))
+		.done(function(data) {
+			// Populate edit person modal
+			$('#editPersonId').val(data.id);
+			$('#editPersonFirstName').val(data.first_name || '');
+			$('#editPersonLastName').val(data.last_name || '');
+			$('#editPersonProgram').val(data.program_or_dept || '');
+			
+			// Show edit modal
+			$('#editPersonModal').modal('show');
+		})
+		.fail(function() {
+			alert('Error loading person data');
+		});
+}
+
+// Delete person function (from main table)
+function deletePerson(personId) {
+	// Show delete confirmation modal
+	$('#deletePersonId').val(personId);
+	$('#deletePersonModal').modal('show');
+}
+
+// Confirm delete person function
+function confirmDeletePerson() {
+	var personId = $('#deletePersonId').val();
+	
+	$.post('{{ url_for("cases.delete_person_api") }}', { person_id: personId })
+		.done(function(response) {
+			$('#deletePersonModal').modal('hide');
+			// Show success message first
+			alert('Person and all associated cases deleted successfully!');
+			// Reload the main table to show updated data after a short delay
+			setTimeout(function() {
+				loadPersonsWithCases();
+			}, 500);
+		})
+		.fail(function() {
+			alert('Error deleting person');
+		});
+}
+
+// Load data when page loads
+$(document).ready(function() {
+	loadPersonsWithCases();
+	
+	// Handle Update Person button click
+	$(document).on('click', '#updatePersonBtn', function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		console.log('Update Person button clicked!');
+		
+		// Get form data
+		var formData = $('#editPersonForm').serialize();
+		
+		console.log('Form data being sent:', formData);
+		console.log('URL:', '{{ url_for("cases.update_person_api") }}');
+		
+		$.post('{{ url_for("cases.update_person_api") }}', formData)
+			.done(function(response) {
+				console.log('Success response:', response);
+				$('#editPersonModal').modal('hide');
+				// Force page reload to ensure data is refreshed
+				location.reload();
+				// Show success message
+				alert('Person information updated successfully!');
+			})
+			.fail(function(xhr, status, error) {
+				console.log('Error response:', xhr.responseText);
+				console.log('Status:', status);
+				console.log('Error:', error);
+				alert('Error updating person information: ' + xhr.responseText);
+			});
+	});
+	
+	// Edit case form submission
+	$('#editCaseForm').on('submit', function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		var formData = $(this).serialize();
+		
+		// Add timestamp to prevent caching
+		var timestamp = new Date().getTime();
+		var url = '{{ url_for("cases.update_case_api") }}' + '?t=' + timestamp;
+		
+		$.post(url, formData)
+			.done(function(response) {
+				// Check if response indicates success
+				if (response.success === true || response.success === 'true') {
+					// Close edit modal first
+					$('#editCaseModal').modal('hide');
+					
+					// Wait for modal to close, then refresh the person cases modal
+					setTimeout(function() {
+						var currentPersonId = $('#personInfo').data('person-id');
+						console.log('Refreshing person cases for ID:', currentPersonId);
+						if (currentPersonId) {
+							viewPersonCases(currentPersonId);
+						}
+						// Reload the main table
+						loadPersonsWithCases();
+						// Show success message after refresh
+						alert('Case information updated successfully!');
+					}, 300);
+				} else {
+					alert('Update failed: ' + (response.error || 'Unknown error'));
+				}
+			})
+			.fail(function(xhr, status, error) {
+				alert('Network error: ' + error + ' (Status: ' + xhr.status + ')');
+			});
+		
+		// Prevent form submission
+		return false;
+	});
+});
+
+function submitEditForm() {
+	var formData = $('#editCaseForm').serialize();
+	
+	// Add timestamp to prevent caching
+	var timestamp = new Date().getTime();
+	var url = '{{ url_for("cases.update_case_api") }}' + '?t=' + timestamp;
+	
+	$.post(url, formData)
+		.done(function(response) {
+			// Check if response indicates success
+			if (response.success === true || response.success === 'true') {
+				// Close edit modal first
+				$('#editCaseModal').modal('hide');
+				
+				// Wait for modal to close, then refresh the person cases modal
+				setTimeout(function() {
+					var currentPersonId = $('#personInfo').data('person-id');
+					console.log('Refreshing person cases for ID:', currentPersonId);
+					if (currentPersonId) {
+						viewPersonCases(currentPersonId);
+					}
+					// Reload the main table
+					loadPersonsWithCases();
+					// Show success message after refresh
+					alert('Case information updated successfully!');
+				}, 300);
+			} else {
+				alert('Update failed: ' + (response.error || 'Unknown error'));
+			}
+		})
+		.fail(function(xhr, status, error) {
+			alert('Network error: ' + error + ' (Status: ' + xhr.status + ')');
+		});
+}
+
+function confirmDeleteCase() {
+	var caseId = $('#deleteCaseId').val();
+	
+	$.post('{{ url_for("cases.delete_case_api", case_id=0) }}'.replace('0', caseId))
+		.done(function(response) {
+			$('#deleteCaseModal').modal('hide');
+			// Show success message first
+			alert('Case deleted successfully!');
+			// Reload the main table to show updated data after a short delay
+			setTimeout(function() {
+				loadPersonsWithCases();
+			}, 500);
+		})
+		.fail(function() {
+			alert('Error deleting case');
+		});
+}
+
+// Generate Report Function - Same as Minor Cases but for Major Cases Staff
+function generateReport() {
+	// Get current date for filename
+	var today = new Date();
+	var dateStr = today.getFullYear() + '-' + 
+				  String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+				  String(today.getDate()).padStart(2, '0');
+	
+	// Create a simple HTML report
+	var reportContent = `
+		<html>
+		<head>
+			<title>Major Cases - Staff Report</title>
+			<style>
+				body { font-family: Arial, sans-serif; margin: 20px; }
+				.header { text-align: center; margin-bottom: 30px; }
+				table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+				th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+				th { background-color: #f2f2f2; }
+			</style>
+		</head>
+		<body>
+			<div class="header">
+				<h1>Major Cases - Staff Report</h1>
+				<p>Generated on: ${today.toLocaleDateString()} at ${today.toLocaleTimeString()}</p>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>Staff Name</th>
+						<th>Position</th>
+						<th>Date</th>
+						<th>Remarks</th>
+						<th>Created</th>
+					</tr>
+				</thead>
+				<tbody>
+	`;
+	
+		// Fetch actual case data from API for Staff only
+		var staffPromise = $.get('{{ url_for("cases.get_persons_api") }}?role=staff');
+		
+		staffPromise.then(function(staffPersons) {
+			// Get staff persons with major cases
+			var staffCases = staffPersons.filter(function(person) {
+				return person.major_count > 0;
+			});
+
+			// Process Staff Cases
+			if (staffCases.length > 0) {
+				// Add tbody content to existing table
+				reportContent += '<tbody>';
+				
+				var staffPromises = staffCases.map(function(person) {
+					return $.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', person.id) + '?case_type=major');
+				});
+
+				Promise.all(staffPromises).then(function(responses) {
+					responses.forEach(function(response) {
+						if (response.cases && response.cases.length > 0) {
+							response.cases.forEach(function(case_item) {
+								if (case_item.case_type === 'major') {
+									reportContent += '<tr>';
+									reportContent += '<td>' + response.person.full_name + '</td>';
+									reportContent += '<td>' + response.person.program_or_dept + '</td>'; // Position
+									reportContent += '<td>' + case_item.date_reported + '</td>';
+									reportContent += '<td>' + (case_item.remarks || '') + '</td>';
+									reportContent += '<td>' + case_item.created_at + '</td>';
+									reportContent += '</tr>';
+								}
+							});
+						}
+					});
+					
+					reportContent += '</tbody></table>';
+					
+					// Complete the staff report
+					reportContent += '</body></html>';
+					
+					// Open report in new window for printing
+					var reportWindow = window.open('', '_blank');
+					reportWindow.document.write(reportContent);
+					reportWindow.document.close();
+					reportWindow.focus();
+
+					// Auto-print after a short delay
+					setTimeout(function() {
+						reportWindow.print();
+					}, 500);
+				});
+			} else {
+				// Add empty tbody for existing table
+				reportContent += '<tbody>';
+				reportContent += '<tr><td colspan="5" style="text-align: center;">No major cases found for staff</td></tr>';
+				reportContent += '</tbody>';
+				reportContent += '</table>';
+				reportContent += '</body></html>';
+				
+				// Open report in new window for printing
+				var reportWindow = window.open('', '_blank');
+				reportWindow.document.write(reportContent);
+				reportWindow.document.close();
+				reportWindow.focus();
+
+				// Auto-print after a short delay
+				setTimeout(function() {
+					reportWindow.print();
+				}, 500);
+			}
+		}).fail(function() {
+			alert('Error loading case data for report');
+		});
+}
+</script>
+
+<style>
+/* Fix modal scrolling issues */
+.modal-body {
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.modal-dialog {
+	max-height: 90vh;
+	overflow: hidden;
+}
+
+/* Ensure modal backdrop doesn't interfere with scrolling */
+.modal-backdrop {
+	z-index: 1040;
+}
+
+.modal {
+	z-index: 1050;
+}
+
+/* Fix for modal content that's too tall */
+.modal-content {
+	max-height: 90vh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.modal-header {
+	flex-shrink: 0;
+}
+
+.modal-footer {
+	flex-shrink: 0;
+}
+</style>
+{% endblock %}

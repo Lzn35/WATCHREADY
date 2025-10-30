@@ -1,0 +1,1466 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Management - WATCH{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: #007BA7; /* cerulean */
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.15);
+        box-shadow: 0 6px 20px rgba(0, 123, 167, 0.15);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+    
+    .page-header p {
+        margin: 5px 0 0 0;
+        opacity: 0.95;
+        font-size: 1rem;
+    }
+    
+    .action-buttons {
+        margin-bottom: 20px;
+    }
+    
+    .btn-create {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 8px;
+        transition: transform 0.2s ease;
+    }
+    
+    .btn-create:hover {
+        transform: translateY(-2px);
+        color: white;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    /* Professor Summary Cards */
+    .professor-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    
+    .professor-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        border-color: #1b00ff;
+    }
+    
+    .professor-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .professor-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1b00ff;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .professor-body {
+        padding: 20px;
+    }
+    
+    .subjects-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .subjects-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .subject-tag {
+        background: linear-gradient(135deg, #1b00ff 0%, #667eea 100%);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .view-schedule-hint {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #f1f3f4;
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-align: center;
+        font-style: italic;
+    }
+    
+    /* Schedule Detail Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #1b00ff 0%, #667eea 100%);
+        color: white;
+        padding: 20px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .close {
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        background: none;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+    }
+    
+    .close:hover {
+        opacity: 1;
+    }
+    
+    .modal-body {
+        padding: 25px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    
+    .schedule-table th {
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .schedule-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f1f3f4;
+        vertical-align: top;
+    }
+    
+    .schedule-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .subject-cell {
+        font-weight: 600;
+        color: #1b00ff;
+    }
+    
+    .day-cell {
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .time-cell {
+        font-family: 'Courier New', monospace;
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.875rem;
+        color: #495057;
+    }
+    
+    .room-cell {
+        color: #6c757d;
+    }
+    
+    .semester-cell {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    /* Form Modal Styles */
+    .modal-footer {
+        padding: 15px 25px;
+        border-top: 1px solid #e9ecef;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    .btn-group .btn {
+        margin: 0 2px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #1b00ff;
+        box-shadow: 0 0 0 0.2rem rgba(27, 0, 255, 0.25);
+        outline: none;
+    }
+    
+    .form-select:disabled {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+        opacity: 0.8;
+    }
+    
+    .text-danger {
+        color: #dc3545 !important;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            margin: 10% auto;
+            max-height: 85vh;
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .schedule-table {
+            font-size: 0.875rem;
+        }
+        
+        .schedule-table th,
+        .schedule-table td {
+            padding: 8px;
+        }
+        
+        .professor-card {
+            margin-bottom: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-calendar-plus" style="margin-right: 10px;"></i>Schedule Management</h1>
+    <p>Manage faculty schedules and view detailed timetables</p>
+</div>
+
+<div class="action-buttons">
+    <button class="btn btn-create" onclick="console.log('Add Schedule button clicked!'); showAddScheduleModal();">
+        <i class="bi bi-plus-circle" style="margin-right: 8px;"></i>
+        Add New Schedule
+    </button>
+    <form id="deleteAllForm" method="POST" action="{{ url_for('attendance.delete_all_schedules') }}" style="display:inline; margin-left: 10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="button" class="btn btn-danger" onclick="confirmDeleteAll()">
+            <i class="bi bi-trash3" style="margin-right: 8px;"></i>
+            Delete All Schedules
+        </button>
+    </form>
+</div>
+
+
+{% if professors and professors|length > 0 %}
+<div class="row">
+    {% for professor in professors %}
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-20">
+        <div class="professor-card" onclick="showScheduleModal('{{ professor.name }}')">
+            <div class="professor-header">
+                <h3 class="professor-name">
+                    <i class="bi bi-person-badge"></i>
+                    {{ professor.name }}
+                </h3>
+            </div>
+            <div class="professor-body">
+                <div class="subjects-label">
+                    <i class="bi bi-book"></i>
+                    Subjects ({{ professor.subjects|length }})
+                </div>
+                <div class="subjects-list">
+                    {% for subject in professor.subjects %}
+                    <span class="subject-tag">
+                        <i class="bi bi-bookmark"></i>
+                        {{ subject }}
+                    </span>
+                    {% endfor %}
+                </div>
+                <div class="view-schedule-hint">
+                    <i class="bi bi-eye"></i>
+                    Click to view detailed schedule
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Schedule Detail Modal -->
+<div id="scheduleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="bi bi-calendar-week"></i>
+                <span id="modalProfessorName">Professor Schedule</span>
+                <button type="button" class="btn btn-sm btn-outline-light ms-3" id="editProfessorBtn" onclick="editProfessorName()" title="Edit Professor Name">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </h2>
+            <button class="close" onclick="closeScheduleModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th><i class="bi bi-book" style="margin-right: 5px;"></i>Subject</th>
+                        <th><i class="bi bi-calendar3" style="margin-right: 5px;"></i>Day</th>
+                        <th><i class="bi bi-clock" style="margin-right: 5px;"></i>Time</th>
+                        <th><i class="bi bi-geo-alt" style="margin-right: 5px;"></i>Room</th>
+                        <th><i class="bi bi-gear" style="margin-right: 5px;"></i>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleTableBody">
+                    <!-- Dynamic content will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="bi bi-exclamation-triangle text-warning"></i>
+                Confirm Deletion
+            </h2>
+            <button class="close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this schedule?</p>
+            <div id="deleteScheduleInfo" class="alert alert-info"></div>
+            <p class="text-muted">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="bi bi-trash" style="margin-right: 5px;"></i>
+                Delete Schedule
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Professor Name Modal -->
+<div id="editProfessorModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="bi bi-person-gear"></i>
+                Edit Professor Name
+            </h2>
+            <button class="close" onclick="closeEditProfessorModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editProfessorForm">
+                <div class="mb-3">
+                    <label for="currentProfessorName" class="form-label">Current Name</label>
+                    <input type="text" class="form-control" id="currentProfessorName" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="newProfessorName" class="form-label">New Professor Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newProfessorName" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeEditProfessorModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveProfessorName()">
+                <i class="bi bi-check-circle" style="margin-right: 5px;"></i>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card-box height-100-p pd-20">
+    <div class="empty-state">
+        <i class="bi bi-person-x"></i>
+        <h4>No Professors Found</h4>
+        <p>Start by adding your first professor to begin managing schedules.</p>
+        <button class="btn btn-create" onclick="showAddScheduleModal()" style="margin-top: 20px;">
+            <i class="bi bi-plus-circle" style="margin-right: 8px;"></i>
+            Add Your First Schedule
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add/Edit Schedule Modal -->
+<div id="scheduleFormModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="bi bi-calendar-plus"></i>
+                <span id="modalFormTitle">Add New Schedule</span>
+            </h2>
+            <button class="close" onclick="closeScheduleFormModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="scheduleForm" method="POST" action="{{ url_for('attendance.add_schedule') }}">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <!-- Hidden field for professor name (used for editing) -->
+                <input type="hidden" id="professor_name" name="professor_name">
+                
+                <div class="row" id="professorSelectRow">
+                    <div class="col-md-12 mb-3">
+                        <label for="professor_select" class="form-label">Professor <span class="text-danger">*</span></label>
+                        <select class="form-select" id="professor_select" name="professor_select" required>
+                            <option value="">Select Professor</option>
+                            {% for professor in professors %}
+                                <option value="{{ professor.name }}">{{ professor.name }}</option>
+                            {% endfor %}
+                            <option value="__new__">+ Add New Professor</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row" id="newProfessorRow" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="new_professor_name" class="form-label">New Professor Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="new_professor_name" name="new_professor_name" placeholder="Enter professor name">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="subject" name="subject" required>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="day_of_week" class="form-label">Day of Week <span class="text-danger">*</span></label>
+                        <select class="form-select" id="day_of_week" name="day_of_week" required>
+                            <option value="">Select Day</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="start_time" class="form-label">Start Time <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" min="07:00" max="20:00" required>
+                        <small class="form-text text-muted">Must be between 7:00 AM - 8:00 PM</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="end_time" class="form-label">End Time <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" min="07:00" max="20:00" required>
+                        <small class="form-text text-muted">Must be between 7:00 AM - 8:00 PM</small>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="room" class="form-label">Room</label>
+                        <input type="text" class="form-control" id="room" name="room" placeholder="e.g., Room 101, Lab 2">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeScheduleFormModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle" style="margin-right: 5px;"></i>
+                        Save Schedule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Professor schedule data (passed from Flask)
+const professorsData = JSON.parse('{{ professors | tojson | safe }}');
+let editScheduleId = null;
+
+function showAddScheduleModal() {
+    console.log('showAddScheduleModal() called');
+    
+    try {
+        // Reset form and modal
+        const scheduleForm = document.getElementById('scheduleForm');
+        console.log('Found scheduleForm:', scheduleForm);
+        
+        if (!scheduleForm) {
+            console.error('scheduleForm not found!');
+            alert('Error: Schedule form not found. Please refresh the page.');
+            return;
+        }
+        
+        scheduleForm.reset();
+        scheduleForm.action = "{{ url_for('attendance.add_schedule') }}";
+        console.log('Form reset and action set');
+        
+        const modalTitle = document.getElementById('modalFormTitle');
+        if (modalTitle) {
+            modalTitle.textContent = 'Add New Schedule';
+            console.log('Modal title set');
+        } else {
+            console.error('modalFormTitle not found!');
+        }
+        
+        editScheduleId = null;
+        
+        // Clear professor name field
+        const professorName = document.getElementById('professor_name');
+        if (professorName) {
+            professorName.value = '';
+            console.log('Professor name cleared');
+        } else {
+            console.error('professor_name field not found!');
+        }
+        
+        // Show professor selection, hide new professor input
+        const professorSelectRow = document.getElementById('professorSelectRow');
+        const newProfessorRow = document.getElementById('newProfessorRow');
+        
+        if (professorSelectRow) {
+            professorSelectRow.style.display = 'block';
+            console.log('Professor select row shown');
+        } else {
+            console.error('professorSelectRow not found!');
+        }
+        
+        if (newProfessorRow) {
+            newProfessorRow.style.display = 'none';
+            console.log('New professor row hidden');
+        } else {
+            console.error('newProfessorRow not found!');
+        }
+        
+        // IMPORTANT: Restore professor select field for add mode
+        const professorSelect = document.getElementById('professor_select');
+        if (professorSelect) {
+            professorSelect.setAttribute('required', 'required');
+            professorSelect.value = ''; // Clear any previous value
+            console.log('[OK] Restored professor_select field for add mode');
+        }
+        
+        const newProfessorName = document.getElementById('new_professor_name');
+        if (newProfessorName) {
+            newProfessorName.removeAttribute('required'); // Not required by default
+            console.log('[OK] Cleared required attribute from new_professor_name');
+        }
+        
+        // Show modal
+        const modal = document.getElementById('scheduleFormModal');
+        console.log('Found modal:', modal);
+        
+        if (!modal) {
+            console.error('scheduleFormModal not found!');
+            alert('Error: Modal not found. Please refresh the page.');
+            return;
+        }
+        
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        console.log('Modal displayed');
+        
+        // Additional debugging - check if modal is visible
+        setTimeout(() => {
+            const modalStyle = window.getComputedStyle(modal);
+            console.log('Modal computed style:', {
+                display: modalStyle.display,
+                visibility: modalStyle.visibility,
+                opacity: modalStyle.opacity,
+                zIndex: modalStyle.zIndex
+            });
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error in showAddScheduleModal:', error);
+        alert(`Error opening modal: ${error.message}`);
+    }
+}
+
+function showEditScheduleModal(scheduleId) {
+    console.log('showEditScheduleModal called with ID:', scheduleId);
+    
+    // Find the schedule data
+    let scheduleData = null;
+    for (const professor of professorsData) {
+        const schedule = professor.schedules.find(s => s.id === scheduleId);
+        if (schedule) {
+            scheduleData = schedule;
+            break;
+        }
+    }
+    
+    if (!scheduleData) {
+        console.error('Schedule not found for ID:', scheduleId);
+        alert('Schedule not found!');
+        return;
+    }
+    
+    console.log('Found schedule data:', scheduleData);
+    
+    // Populate form with existing data (professor name is hidden and set automatically)
+    const professorNameHidden = document.getElementById('professor_name');
+    professorNameHidden.value = scheduleData.professor_name || '';
+    console.log('[OK] Set professor_name hidden field to:', professorNameHidden.value);
+    
+    document.getElementById('subject').value = scheduleData.subject || '';
+    document.getElementById('day_of_week').value = scheduleData.day_of_week || '';
+    document.getElementById('start_time').value = scheduleData.start_time || '';
+    document.getElementById('end_time').value = scheduleData.end_time || '';
+    document.getElementById('room').value = scheduleData.room || '';
+    
+    console.log('Form populated with data:');
+    console.log('  professor_name:', document.getElementById('professor_name').value);
+    console.log('  subject:', document.getElementById('subject').value);
+    console.log('  day_of_week:', document.getElementById('day_of_week').value);
+    console.log('  start_time:', document.getElementById('start_time').value);
+    console.log('  end_time:', document.getElementById('end_time').value);
+    console.log('  room:', document.getElementById('room').value);
+    
+    // Update form action and title
+    const form = document.getElementById('scheduleForm');
+    const newAction = `/attendance/schedule-management/edit/${scheduleId}`;
+    form.action = newAction;
+    console.log('Form action set to:', newAction);
+    
+    document.getElementById('modalFormTitle').textContent = 'Edit Schedule';
+    editScheduleId = scheduleId;
+    console.log('🆔 Edit schedule ID set to:', editScheduleId);
+    
+    // Hide professor selection completely in edit mode (you have separate way to edit professor names)
+    const professorSelect = document.getElementById('professor_select');
+    if (professorSelect) {
+        professorSelect.removeAttribute('required');
+        professorSelect.value = ''; // Clear the value
+        console.log('[OK] Removed required attribute and cleared professor_select');
+    }
+    
+    const newProfessorName = document.getElementById('new_professor_name');
+    if (newProfessorName) {
+        newProfessorName.removeAttribute('required');
+        newProfessorName.value = ''; // Clear the value
+        console.log('[OK] Cleared new_professor_name field');
+    }
+    
+    // Hide professor selection rows completely in edit mode
+    document.getElementById('professorSelectRow').style.display = 'none';
+    document.getElementById('newProfessorRow').style.display = 'none';
+    console.log('Professor selection rows hidden completely in edit mode');
+    
+    // Show modal
+    const modal = document.getElementById('scheduleFormModal');
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    console.log('Modal displayed');
+}
+
+function showDeleteModal(scheduleId) {
+    // Find the schedule data
+    let scheduleData = null;
+    for (const professor of professorsData) {
+        const schedule = professor.schedules.find(s => s.id === scheduleId);
+        if (schedule) {
+            scheduleData = schedule;
+            break;
+        }
+    }
+    
+    if (!scheduleData) {
+        alert('Schedule not found!');
+        return;
+    }
+    
+    // Populate delete confirmation info
+    document.getElementById('deleteScheduleInfo').innerHTML = `
+        <strong>Professor:</strong> ${scheduleData.professor_name}<br>
+        <strong>Subject:</strong> ${scheduleData.subject}<br>
+        <strong>Day:</strong> ${scheduleData.day_of_week}<br>
+        <strong>Time:</strong> ${scheduleData.start_time} - ${scheduleData.end_time}<br>
+        <strong>Room:</strong> ${scheduleData.room}
+    `;
+    
+    // Set up delete button
+    const deleteBtn = document.getElementById('confirmDeleteBtn');
+    deleteBtn.onclick = function() {
+        deleteSchedule(scheduleId);
+    };
+    
+    // Show modal
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function deleteSchedule(scheduleId) {
+    // Create a form and submit it
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/attendance/schedule-management/delete/${scheduleId}`;
+    
+    // Add CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function closeScheduleFormModal() {
+    const modal = document.getElementById('scheduleFormModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    
+    // Reset edit schedule ID
+    editScheduleId = null;
+    
+    // Reset professor select field
+    const professorSelect = document.getElementById('professor_select');
+    if (professorSelect) {
+        professorSelect.setAttribute('required', 'required');
+        professorSelect.value = ''; // Clear the value
+    }
+    
+    // Reset form to default state
+    const form = document.getElementById('scheduleForm');
+    if (form) {
+        form.action = "{{ url_for('attendance.add_schedule') }}";
+        form.reset();
+    }
+    
+    // Reset modal title
+    const modalTitle = document.getElementById('modalFormTitle');
+    if (modalTitle) {
+        modalTitle.textContent = 'Add New Schedule';
+    }
+    
+    // Show professor selection rows
+    const professorSelectRow = document.getElementById('professorSelectRow');
+    const newProfessorRow = document.getElementById('newProfessorRow');
+    if (professorSelectRow) professorSelectRow.style.display = 'block';
+    if (newProfessorRow) newProfessorRow.style.display = 'none';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function editProfessorName() {
+    // Get current professor name from modal
+    const currentName = document.getElementById('modalProfessorName').textContent;
+    
+    // Populate edit professor modal
+    document.getElementById('currentProfessorName').value = currentName;
+    document.getElementById('newProfessorName').value = currentName;
+    
+    // Show edit professor modal
+    const modal = document.getElementById('editProfessorModal');
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEditProfessorModal() {
+    const modal = document.getElementById('editProfessorModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function saveProfessorName() {
+    const currentName = document.getElementById('currentProfessorName').value;
+    const newName = document.getElementById('newProfessorName').value.trim();
+    
+    if (!newName) {
+        alert('Please enter a new professor name!');
+        return;
+    }
+    
+    if (newName === currentName) {
+        alert('The new name is the same as the current name!');
+        return;
+    }
+    
+    // Confirm the change
+    if (confirm(`Are you sure you want to change the professor name from "${currentName}" to "${newName}"?\n\nThis will update all schedules for this professor.`)) {
+        // Create a form and submit it to the backend
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('attendance.update_professor_name') }}";
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add hidden fields
+        const oldNameInput = document.createElement('input');
+        oldNameInput.type = 'hidden';
+        oldNameInput.name = 'old_name';
+        oldNameInput.value = currentName;
+        
+        const newNameInput = document.createElement('input');
+        newNameInput.type = 'hidden';
+        newNameInput.name = 'new_name';
+        newNameInput.value = newName;
+        
+        form.appendChild(oldNameInput);
+        form.appendChild(newNameInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function showScheduleModal(professorName) {
+    // Find the professor data
+    const professor = professorsData.find(p => p.name === professorName);
+    
+    if (!professor) {
+        alert('Professor data not found!');
+        return;
+    }
+    
+    // Update modal title
+    document.getElementById('modalProfessorName').textContent = professorName;
+    
+    // Clear existing table content
+    const tableBody = document.getElementById('scheduleTableBody');
+    tableBody.innerHTML = '';
+    
+    // Sort schedules by day and time for better presentation
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const sortedSchedules = professor.schedules.sort((a, b) => {
+        const dayA = dayOrder.indexOf(a.day_of_week);
+        const dayB = dayOrder.indexOf(b.day_of_week);
+        if (dayA !== dayB) return dayA - dayB;
+        
+        // Sort by time if same day
+        return a.start_time.localeCompare(b.start_time);
+    });
+    
+    // Populate table with professor's schedules
+    sortedSchedules.forEach(schedule => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="subject-cell">${schedule.subject}</td>
+            <td class="day-cell">${schedule.day_of_week}</td>
+            <td class="time-cell">${schedule.start_time} - ${schedule.end_time}</td>
+            <td class="room-cell">${schedule.room}</td>
+            <td class="semester-cell">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="showEditScheduleModal(${schedule.id})" title="Edit Schedule">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="showDeleteModal(${schedule.id})" title="Delete Schedule">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+    
+    // Show modal
+    const modal = document.getElementById('scheduleModal');
+    modal.style.display = 'block';
+    
+    // Add body class to prevent scrolling
+    document.body.style.overflow = 'hidden';
+    
+    // Focus trap for accessibility
+    modal.focus();
+}
+
+function closeScheduleModal() {
+    const modal = document.getElementById('scheduleModal');
+    modal.style.display = 'none';
+    
+    // Restore body scrolling
+    document.body.style.overflow = 'auto';
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const scheduleModal = document.getElementById('scheduleModal');
+    const formModal = document.getElementById('scheduleFormModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const editProfessorModal = document.getElementById('editProfessorModal');
+    
+    if (event.target === scheduleModal) {
+        closeScheduleModal();
+    } else if (event.target === formModal) {
+        closeScheduleFormModal();
+    } else if (event.target === deleteModal) {
+        closeDeleteModal();
+    } else if (event.target === editProfessorModal) {
+        closeEditProfessorModal();
+    }
+}
+
+// Close modals with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeScheduleModal();
+        closeScheduleFormModal();
+        closeDeleteModal();
+        closeEditProfessorModal();
+    }
+});
+
+// Handle professor selection in the form
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - Initializing schedule management');
+    
+    const professorSelect = document.getElementById('professor_select');
+    const newProfessorRow = document.getElementById('newProfessorRow');
+    const professorSelectRow = document.getElementById('professorSelectRow');
+    const scheduleForm = document.getElementById('scheduleForm');
+    
+    console.log('Form elements found:', {
+        professorSelect: !!professorSelect,
+        newProfessorRow: !!newProfessorRow,
+        professorSelectRow: !!professorSelectRow,
+        scheduleForm: !!scheduleForm
+    });
+    
+    // Test the showAddScheduleModal function
+    if (typeof showAddScheduleModal === 'function') {
+        console.log('showAddScheduleModal function is available');
+    } else {
+        console.error('showAddScheduleModal function is NOT available');
+    }
+    
+    // Test button click programmatically
+    const addButton = document.querySelector('.btn-create');
+    if (addButton) {
+        console.log('Add Schedule button found');
+        console.log('Button onclick:', addButton.getAttribute('onclick'));
+    } else {
+        console.error('Add Schedule button NOT found');
+    }
+    
+    // Debug: Check if modal elements exist
+    console.log('Checking for modal elements:');
+    console.log('  scheduleFormModal:', document.getElementById('scheduleFormModal'));
+    console.log('  scheduleForm:', document.getElementById('scheduleForm'));
+    console.log('  modalFormTitle:', document.getElementById('modalFormTitle'));
+    console.log('  professor_name:', document.getElementById('professor_name'));
+    console.log('  professorSelectRow:', document.getElementById('professorSelectRow'));
+    console.log('  newProfessorRow:', document.getElementById('newProfessorRow'));
+    
+    // Debug: List all elements with IDs
+    const allElementsWithIds = document.querySelectorAll('[id]');
+    console.log('All elements with IDs found on page:');
+    allElementsWithIds.forEach(el => {
+        console.log(`  ${el.id}: ${el.tagName}`);
+    });
+    
+    // Handle professor selection change
+    professorSelect.addEventListener('change', function() {
+        if (this.value === '__new__') {
+            // Show new professor input
+            newProfessorRow.style.display = 'block';
+            document.getElementById('new_professor_name').required = true;
+        } else {
+            // Hide new professor input
+            newProfessorRow.style.display = 'none';
+            document.getElementById('new_professor_name').required = false;
+            document.getElementById('new_professor_name').value = '';
+        }
+    });
+    
+    // Handle form submission
+    scheduleForm.addEventListener('submit', function(e) {
+        console.log(' Form submission started');
+        console.log(' Form action:', this.action);
+        console.log('🆔 Edit schedule ID:', editScheduleId);
+        console.log(' Form method:', this.method);
+        
+        // Prevent default submission temporarily to do our own validation
+        e.preventDefault();
+        console.log('Prevented default submission for validation');
+        
+        const professorSelect = document.getElementById('professor_select');
+        const newProfessorName = document.getElementById('new_professor_name');
+        const professorNameHidden = document.getElementById('professor_name');
+        
+        console.log(' Form elements:', {
+            professorSelect: professorSelect?.value,
+            newProfessorName: newProfessorName?.value,
+            professorNameHidden: professorNameHidden?.value
+        });
+        
+        // Set the professor name based on selection (only for add mode)
+        if (!editScheduleId) {
+            if (professorSelect.value === '__new__') {
+                if (!newProfessorName.value.trim()) {
+                    console.log('New professor name is empty');
+                    e.preventDefault();
+                    alert('Please enter a professor name!');
+                    return false;
+                }
+                professorNameHidden.value = newProfessorName.value.trim();
+                console.log('Set professor name from new professor input:', professorNameHidden.value);
+            } else if (professorSelect.value) {
+                professorNameHidden.value = professorSelect.value;
+                console.log('Set professor name from selection:', professorNameHidden.value);
+            } else if (!professorNameHidden.value) {
+                console.log('No professor selected');
+                e.preventDefault();
+                alert('Please select a professor!');
+                return false;
+            }
+        } else {
+            // In edit mode, skip professor name validation - just use whatever is there
+            console.log('Edit mode: skipping professor name validation');
+        }
+        
+        // Log all form data before submission
+        const formData = new FormData(this);
+        console.log(' Final form data:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
+        // Additional validation for required fields
+        let requiredFields = ['subject', 'day_of_week', 'start_time', 'end_time'];
+        
+        // Only check professor_name in add mode, not edit mode
+        if (!editScheduleId) {
+            requiredFields.push('professor_name');
+        }
+        
+        const missingFields = [];
+        
+        for (const fieldName of requiredFields) {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (field && !field.value.trim()) {
+                missingFields.push(fieldName);
+                console.log(`[ERROR] Missing required field: ${fieldName} (value: "${field.value}")`);
+            }
+        }
+        
+        if (missingFields.length > 0) {
+            console.log('[ERROR] Validation failed - missing fields:', missingFields);
+            e.preventDefault();
+            alert(`Please fill in all required fields. Missing: ${missingFields.join(', ')}`);
+            return false;
+        }
+        
+        console.log('[OK] All required fields are filled');
+        
+        console.log('[OK] Form validation passed, submitting...');
+        console.log('Submitting to URL:', this.action);
+        console.log(' Using method:', this.method);
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = 'Saving...';
+        submitBtn.disabled = true;
+        console.log('⏳ Loading state activated');
+        
+        // Manually submit the form after validation passes
+        console.log(' Manually submitting form to:', this.action);
+        this.submit();
+        
+        // Re-enable button after a delay in case of errors
+        setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            console.log(' Button re-enabled after timeout');
+        }, 3000);
+    });
+    
+    // Add click listener to submit button for debugging
+    const submitButton = document.querySelector('#scheduleForm button[type="submit"]');
+    if (submitButton) {
+        submitButton.addEventListener('click', function(e) {
+            console.log('Submit button clicked!');
+            console.log(' Form action:', document.getElementById('scheduleForm').action);
+            console.log('🆔 Edit schedule ID:', editScheduleId);
+        });
+    }
+    
+    // Add smooth animations on page load
+    const cards = document.querySelectorAll('.professor-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 150);
+    });
+    
+    // Add hover sound effect (optional)
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+
+function confirmDeleteAll() {
+    if (confirm('Delete ALL schedules and professor entries? This cannot be undone.')) {
+        document.getElementById('deleteAllForm').submit();
+    }
+}
+
+// Add loading state for modal
+function showLoadingInModal() {
+    const tableBody = document.getElementById('scheduleTableBody');
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #6c757d;">
+                Loading schedule details...
+            </td>
+        </tr>
+    `;
+}
+
+// Enhanced modal interactions
+function enhanceModalExperience() {
+    const modal = document.getElementById('scheduleModal');
+    const modalContent = modal.querySelector('.modal-content');
+    
+    // Add subtle animations
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modalContent.style.animation = 'modalSlideOut 0.3s ease-in forwards';
+            setTimeout(() => {
+                closeScheduleModal();
+                modalContent.style.animation = 'modalSlideIn 0.3s ease-out';
+            }, 250);
+        }
+    });
+}
+
+// Initialize enhanced modal experience
+document.addEventListener('DOMContentLoaded', enhanceModalExperience);
+
+// Handle professor selection in add schedule modal
+document.addEventListener('DOMContentLoaded', function() {
+    const professorSelect = document.getElementById('professor_select');
+    const newProfessorRow = document.getElementById('newProfessorRow');
+    const newProfessorInput = document.getElementById('new_professor_name');
+    const professorNameHidden = document.getElementById('professor_name');
+    
+    if (professorSelect) {
+        professorSelect.addEventListener('change', function() {
+            if (this.value === '__new__') {
+                newProfessorRow.style.display = 'block';
+                newProfessorInput.required = true;
+                professorNameHidden.value = '';
+            } else if (this.value) {
+                newProfessorRow.style.display = 'none';
+                newProfessorInput.required = false;
+                professorNameHidden.value = this.value;
+            } else {
+                newProfessorRow.style.display = 'none';
+                newProfessorInput.required = false;
+                professorNameHidden.value = '';
+            }
+        });
+    }
+    
+    if (newProfessorInput) {
+        newProfessorInput.addEventListener('input', function() {
+            if (professorSelect.value === '__new__') {
+                professorNameHidden.value = this.value;
+            }
+        });
+    }
+    
+    // Handle form submission to set professor name correctly
+    const scheduleForm = document.getElementById('scheduleForm');
+    if (scheduleForm) {
+        scheduleForm.addEventListener('submit', function(e) {
+            // If adding new schedule and professor is selected
+            if (!editScheduleId) {
+                if (professorSelect.value === '__new__') {
+                    // Use new professor name
+                    professorNameHidden.value = newProfessorInput.value;
+                } else {
+                    // Use selected professor
+                    professorNameHidden.value = professorSelect.value;
+                }
+                
+                // Validate professor name is set
+                if (!professorNameHidden.value) {
+                    e.preventDefault();
+                    alert('Please select a professor or enter a new professor name.');
+                    return false;
+                }
+            }
+        });
+    }
+    
+    // Time validation - ensure times are within 7 AM to 8 PM
+    const startTimeInput = document.getElementById('start_time');
+    const endTimeInput = document.getElementById('end_time');
+    
+    function validateTimeRange() {
+        if (startTimeInput && endTimeInput) {
+            const startTime = startTimeInput.value;
+            const endTime = endTimeInput.value;
+            
+            if (startTime && endTime) {
+                // Convert to 24-hour format for comparison
+                const startHour = parseInt(startTime.split(':')[0]);
+                const endHour = parseInt(endTime.split(':')[0]);
+                
+                // Check if times are within 7 AM (07:00) to 8 PM (20:00)
+                if (startHour < 7 || startHour >= 20 || endHour < 7 || endHour >= 20) {
+                    alert('Schedule times must be between 7:00 AM and 8:00 PM only!');
+                    return false;
+                }
+                
+                // Check if start time is before end time
+                if (startTime >= endTime) {
+                    alert('Start time must be before end time!');
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    // Add event listeners for real-time validation
+    if (startTimeInput) {
+        startTimeInput.addEventListener('change', function() {
+            validateTimeRange();
+        });
+    }
+    
+    if (endTimeInput) {
+        endTimeInput.addEventListener('change', function() {
+            validateTimeRange();
+        });
+    }
+    
+    // Validate before form submission
+    if (scheduleForm) {
+        scheduleForm.addEventListener('submit', function(e) {
+            if (!validateTimeRange()) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Validate text inputs for whitespace-only entries
+            if (!validateTextInputs()) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+    
+    // Function to validate text inputs and prevent whitespace-only entries
+    function validateTextInputs() {
+        const textInputs = [
+            { id: 'new_professor_name', name: 'Professor Name' },
+            { id: 'subject', name: 'Subject' },
+            { id: 'room', name: 'Room' }
+        ];
+        
+        for (const input of textInputs) {
+            const element = document.getElementById(input.id);
+            if (element && element.value) {
+                const value = element.value.trim();
+                
+                // Check if value is empty after trimming
+                if (!value) {
+                    alert(`${input.name} cannot be empty or contain only spaces.`);
+                    element.focus();
+                    return false;
+                }
+                
+                // Check if value contains only whitespace
+                if (/^\s+$/.test(element.value)) {
+                    alert(`${input.name} cannot contain only whitespace characters.`);
+                    element.focus();
+                    return false;
+                }
+                
+                // Update the field with trimmed value
+                element.value = value;
+            }
+        }
+        
+        return true;
+    }
+    
+    // Add real-time validation to text inputs
+    const textInputIds = ['new_professor_name', 'subject', 'room'];
+    textInputIds.forEach(inputId => {
+        const element = document.getElementById(inputId);
+        if (element) {
+            element.addEventListener('blur', function() {
+                if (this.value && /^\s+$/.test(this.value)) {
+                    alert(`${this.previousElementSibling.textContent.replace('*', '').trim()} cannot contain only whitespace characters.`);
+                    this.value = '';
+                    this.focus();
+                } else if (this.value) {
+                    this.value = this.value.trim();
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+@keyframes modalSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+}
+</style>
+{% endblock %}
+

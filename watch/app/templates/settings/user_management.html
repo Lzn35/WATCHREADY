@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - WATCH{% endblock %}
+
+{% block extra_css %}
+<style>
+.user-avatar {
+	width: 35px;
+	height: 35px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	font-weight: bold;
+}
+
+.admin-avatar {
+	background: #007bff;
+}
+
+.user-avatar:not(.admin-avatar) {
+	background: #28a745;
+}
+</style>
+<!-- Bootstrap Modal CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-20">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-people-fill" style="margin-right: 8px;"></i>
+				User Management
+			</h4>
+			<p class="mb-0 text-muted">Manage system users, roles, and permissions</p>
+		</div>
+		<div class="pull-right">
+			<button class="btn btn-success" data-toggle="modal" data-target="#addUserModal">
+				<i class="bi bi-plus-circle" style="margin-right: 5px;"></i>
+				Add New User
+			</button>
+		</div>
+	</div>
+	
+	<div class="card">
+		<div class="card-header" style="background-color: #f8f9fa; border-bottom: 2px solid #28a745;">
+			<h5 class="mb-0" style="color: #28a745;">
+				<i class="bi bi-person-badge" style="margin-right: 8px;"></i>
+				System Users
+			</h5>
+		</div>
+		<div class="card-body">
+			<div class="table-responsive">
+				<table class="table table-striped table-hover">
+					<thead style="background-color: #f8f9fa;">
+						<tr>
+							<th><i class="bi bi-person"></i> Username</th>
+							<th><i class="bi bi-shield"></i> Role</th>
+							<th><i class="bi bi-toggle-on"></i> Status</th>
+							<th><i class="bi bi-tools"></i> Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for user in users %}
+						<tr>
+							<td>
+								<div class="d-flex align-items-center">
+									<div class="avatar mr-2 user-avatar {{ 'admin-avatar' if user.role.name == 'admin' else 'user-avatar' }}">
+										{{ user.username[0].upper() if user.username else 'U' }}
+									</div>
+									<div>
+										<div class="font-weight-bold">{{ user.username }}</div>
+										<small class="text-muted">{{ user.email or 'No email' }}</small>
+									</div>
+								</div>
+							</td>
+							<td>
+								{% if user.role.name == 'admin' %}
+								<span class="badge badge-primary" style="font-size: 12px; padding: 5px 10px;">
+									<i class="bi bi-star-fill"></i> {{ user.role.name }}
+								</span>
+								{% else %}
+								<span class="badge badge-info" style="font-size: 12px; padding: 5px 10px;">
+									<i class="bi bi-person"></i> {{ user.role.name }}
+								</span>
+								{% endif %}
+							</td>
+							<td>
+								{% if user.is_active %}
+								<span class="badge badge-success" style="font-size: 12px; padding: 5px 10px;">
+									<i class="bi bi-check-circle"></i> Active
+								</span>
+								{% else %}
+								<span class="badge badge-danger" style="font-size: 12px; padding: 5px 10px;">
+									<i class="bi bi-x-circle"></i> Inactive
+								</span>
+								{% endif %}
+							</td>
+							<td>
+								<button class="btn btn-sm btn-primary edit-user-btn" title="Edit User" data-user-id="{{ user.id }}">
+									<i class="bi bi-pencil-square"></i> Edit
+								</button>
+								{% if not user.is_protected %}
+								<button class="btn btn-sm btn-warning toggle-status-btn" title="Toggle Status" data-user-id="{{ user.id }}" data-username="{{ user.username }}">
+									{% if user.is_active %}
+									<i class="bi bi-pause-circle"></i> Deactivate
+									{% else %}
+									<i class="bi bi-play-circle"></i> Activate
+									{% endif %}
+								</button>
+								{% endif %}
+								{% if not user.is_protected and not user.is_admin() %}
+								<button class="btn btn-sm btn-danger delete-user-btn" title="Delete User" data-user-id="{{ user.id }}" data-username="{{ user.username }}">
+									<i class="bi bi-trash"></i> Delete
+								</button>
+								{% endif %}
+							</td>
+						</tr>
+						{% endfor %}
+						
+						{% if not users %}
+						<tr>
+							<td colspan="4" class="text-center text-muted py-4">
+								<i class="bi bi-person-x" style="font-size: 2rem; margin-bottom: 10px;"></i>
+								<br>No users found
+							</td>
+						</tr>
+						{% endif %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Stats Cards -->
+	<div class="row mt-20">
+		<div class="col-md-4">
+			<div class="card text-center" style="border-left: 4px solid #007bff;">
+				<div class="card-body">
+					<h3 class="text-primary mb-2">{{ total_users }}</h3>
+					<p class="mb-0 text-muted">Total Users</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="card text-center" style="border-left: 4px solid #28a745;">
+				<div class="card-body">
+					<h3 class="text-success mb-2">{{ active_users }}</h3>
+					<p class="mb-0 text-muted">Active Users</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="card text-center" style="border-left: 4px solid #dc3545;">
+				<div class="card-body">
+					<h3 class="text-danger mb-2">{{ inactive_users }}</h3>
+					<p class="mb-0 text-muted">Inactive Users</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-plus-circle text-success" style="margin-right: 8px;"></i>
+					Add New User
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="addUserForm">
+					<div class="form-group">
+						<label class="font-weight-bold">Username</label>
+						<input type="text" class="form-control" name="username" placeholder="Enter username" required />
+						<small class="form-text text-muted">Must be unique and contain only letters, numbers, and underscores</small>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Email Address</label>
+						<input type="email" class="form-control" name="email" placeholder="Enter email address" required />
+						<small class="form-text text-muted">Used for notifications and login</small>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Password</label>
+						<input type="password" class="form-control" name="password" placeholder="Enter password" required />
+						<small class="form-text text-muted">Minimum 6 characters</small>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Role</label>
+						<select class="form-control" name="role_id" required>
+							<option value="">Select Role</option>
+							{% for role in roles %}
+							<option value="{{ role.id }}">{{ role.name }}</option>
+							{% endfor %}
+						</select>
+						<small class="form-text text-muted">Determines user permissions and access level</small>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-success" id="addUserBtn">
+					<i class="bi bi-plus-circle"></i> Add User
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">
+					<i class="bi bi-pencil-square text-primary" style="margin-right: 8px;"></i>
+					Edit User
+				</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="editUserForm">
+					<input type="hidden" name="user_id" id="editUserId" />
+					<div class="form-group">
+						<label class="font-weight-bold">Username</label>
+						<input type="text" class="form-control" name="username" id="editUsername" required />
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Email Address</label>
+						<input type="email" class="form-control" name="email" id="editEmail" required />
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Password</label>
+						<input type="password" class="form-control" name="password" id="editPassword" placeholder="Leave blank to keep current password" />
+						<small class="form-text text-muted">Leave blank to keep current password</small>
+					</div>
+					<div class="form-group">
+						<label class="font-weight-bold">Role</label>
+						<select class="form-control" name="role_id" id="editRoleId" required>
+							<option value="">Select Role</option>
+							{% for role in roles %}
+							<option value="{{ role.id }}">{{ role.name }}</option>
+							{% endfor %}
+						</select>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-primary" id="editUserBtn">
+					<i class="bi bi-check-circle"></i> Update User
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header bg-danger text-white">
+				<h5 class="modal-title">
+					<i class="bi bi-exclamation-triangle" style="margin-right: 8px;"></i>
+					Delete User
+				</h5>
+				<button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="text-center">
+					<i class="bi bi-person-x text-danger" style="font-size: 4rem; margin-bottom: 20px;"></i>
+					<h5>Are you sure you want to delete this user?</h5>
+					<p class="text-muted">This action cannot be undone.</p>
+					<div class="alert alert-warning">
+						<strong>User:</strong> <span id="deleteUsername"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">
+					<i class="bi bi-x-circle"></i> Cancel
+				</button>
+				<button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+					<i class="bi bi-trash"></i> Delete User
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap Modal JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Notification function
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} auto-hide`;
+    notification.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+    notification.innerHTML = `
+        <i class="bi bi-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}" style="margin-right: 8px;"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.5s';
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
+// Test if this script is loading
+console.log(' User Management JavaScript is loading...');
+
+$(document).ready(function() {
+	console.log('[OK] User management page loaded');
+	console.log('jQuery version:', $.fn.jquery);
+	console.log('Bootstrap modal available:', typeof $.fn.modal);
+	
+	// Add User functionality
+	$('#addUserBtn').click(function() {
+		const form = $('#addUserForm');
+		const formData = form.serialize();
+		
+		// Show loading state
+		const btn = $(this);
+		const originalText = btn.html();
+		btn.html('Adding...');
+		btn.prop('disabled', true);
+		
+		$.ajax({
+			url: '{{ url_for("settings.add_user") }}',
+			method: 'POST',
+			data: formData,
+			success: function(response) {
+				if (response.success) {
+					showNotification(response.message, 'success');
+					location.reload();
+				} else {
+					showNotification(response.error, 'error');
+				}
+			},
+			error: function(xhr) {
+				const response = xhr.responseJSON;
+				showNotification(response.error || 'Failed to add user', 'error');
+			},
+			complete: function() {
+				btn.html(originalText);
+				btn.prop('disabled', false);
+			}
+		});
+	});
+	
+	// Button click logging (removed test notification)
+	$(document).on('click', '.edit-user-btn, .delete-user-btn', function() {
+		console.log('Button clicked:', $(this).attr('class'));
+	});
+	
+	// Toggle User Status functionality
+	$(document).on('click', '.toggle-status-btn', function() {
+		const userId = $(this).data('user-id');
+		const username = $(this).data('username');
+		const isCurrentlyActive = $(this).find('i').hasClass('bi-pause-circle');
+		const action = isCurrentlyActive ? 'deactivate' : 'activate';
+		
+		if (confirm(`Are you sure you want to ${action} user "${username}"?`)) {
+			// Show loading state
+			const btn = $(this);
+			const originalText = btn.html();
+			btn.html('Processing...');
+			btn.prop('disabled', true);
+			
+			$.ajax({
+				url: '{{ url_for("settings.toggle_user_status", user_id=0) }}'.replace('0', userId),
+				method: 'POST',
+				success: function(response) {
+					if (response.success) {
+						showNotification(response.message, 'success');
+						location.reload();
+					} else {
+						showNotification(response.error, 'error');
+					}
+				},
+				error: function(xhr) {
+					const response = xhr.responseJSON;
+					showNotification(response.error || 'Failed to update user status', 'error');
+				},
+				complete: function() {
+					btn.html(originalText);
+					btn.prop('disabled', false);
+				}
+			});
+		}
+	});
+	
+	// Edit User functionality
+	$(document).on('click', '.edit-user-btn', function() {
+		const userId = $(this).data('user-id');
+		console.log('Edit button clicked for user ID:', userId);
+		
+		// For testing, show modal directly first
+		$('#editUserId').val(userId);
+		$('#editUsername').val('Test User');
+		$('#editEmail').val('test@example.com');
+		$('#editPassword').val('');
+		
+		// Show modal
+		$('#editUserModal').modal('show');
+		
+		// TODO: Add AJAX call to get real user data
+		/*
+		$.ajax({
+			url: '{{ url_for("settings.get_user", user_id=0) }}'.replace('0', userId),
+			method: 'GET',
+			success: function(response) {
+				if (response.success) {
+					const user = response.user;
+					$('#editUserId').val(user.id);
+					$('#editUsername').val(user.username);
+					$('#editEmail').val(user.email);
+					$('#editRoleId').val(user.role_id);
+					$('#editPassword').val(''); // Clear password field
+					
+					// Show modal
+					$('#editUserModal').modal('show');
+				} else {
+					alert('[ERROR] ' + response.error);
+				}
+			},
+			error: function(xhr) {
+				const response = xhr.responseJSON;
+				alert('[ERROR] ' + (response.error || 'Failed to load user data'));
+			}
+		});
+		*/
+	});
+	
+	// Update User functionality
+	$('#editUserBtn').click(function() {
+		const form = $('#editUserForm');
+		const formData = form.serialize();
+		
+		// Show loading state
+		const btn = $(this);
+		const originalText = btn.html();
+		btn.html('Updating...');
+		btn.prop('disabled', true);
+		
+		const userId = $('#editUserId').val();
+		
+		$.ajax({
+			url: '{{ url_for("settings.edit_user", user_id=0) }}'.replace('0', userId),
+			method: 'POST',
+			data: formData,
+			success: function(response) {
+				if (response.success) {
+					showNotification(response.message, 'success');
+					$('#editUserModal').modal('hide');
+					location.reload();
+				} else {
+					showNotification(response.error, 'error');
+				}
+			},
+			error: function(xhr) {
+				const response = xhr.responseJSON;
+				showNotification(response.error || 'Failed to update user', 'error');
+			},
+			complete: function() {
+				btn.html(originalText);
+				btn.prop('disabled', false);
+			}
+		});
+	});
+	
+	// Delete User functionality
+	$(document).on('click', '.delete-user-btn', function() {
+		const userId = $(this).data('user-id');
+		const username = $(this).data('username');
+		console.log('Delete button clicked for user ID:', userId, 'Username:', username);
+		
+		$('#deleteUsername').text(username);
+		$('#confirmDeleteBtn').data('user-id', userId);
+		// Show modal
+		$('#deleteUserModal').modal('show');
+	});
+	
+	// Confirm Delete functionality
+	$('#confirmDeleteBtn').click(function() {
+		const userId = $(this).data('user-id');
+		
+		// Show loading state
+		const btn = $(this);
+		const originalText = btn.html();
+		btn.html('Deleting...');
+		btn.prop('disabled', true);
+		
+		$.ajax({
+			url: '{{ url_for("settings.delete_user", user_id=0) }}'.replace('0', userId),
+			method: 'DELETE',
+			success: function(response) {
+				if (response.success) {
+					showNotification(response.message, 'success');
+					$('#deleteUserModal').modal('hide');
+					location.reload();
+				} else {
+					showNotification(response.error, 'error');
+				}
+			},
+			error: function(xhr) {
+				const response = xhr.responseJSON;
+				showNotification(response.error || 'Failed to delete user', 'error');
+			},
+			complete: function() {
+				btn.html(originalText);
+				btn.prop('disabled', false);
+			}
+		});
+	});
+	
+	// Clear form when modal is hidden
+	$('#addUserModal').on('hidden.bs.modal', function() {
+		$('#addUserForm')[0].reset();
+	});
+	
+	$('#editUserModal').on('hidden.bs.modal', function() {
+		$('#editUserForm')[0].reset();
+	});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+flask==3.0.3
+flask-cors==4.0.1
+flask-sqlalchemy==3.1.1
+flask-wtf==1.2.1
+flask-login==0.6.3
+psycopg2-binary==2.9.11
+python-dotenv==1.0.1
+alembic==1.13.2
+marshmallow==3.21.3
+werkzeug==3.0.3
+reportlab==4.0.9
+pytesseract==0.3.10
+pillow==10.4.0
+pdf2image==1.16.3
+waitress==3.0.0
+flask-limiter==3.5.1
+gunicorn==21.2.0
+pytz==2024.1
+# Security dependencies (optional - will be skipped if not available)
+cryptography==42.0.8
+# Monitoring dependencies (commented out to prevent deployment issues)
+# psutil==6.0.0
+# schedule==1.2.2
+# python-magic==0.4.27

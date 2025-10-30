@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - WATCH{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<div class="clearfix mb-20">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-gear-fill" style="margin-right: 8px;"></i>
+				System Settings
+			</h4>
+			<p class="mb-0 text-muted">Configure general system settings and preferences</p>
+		</div>
+	</div>
+	
+	<div class="row">
+		<div class="col-md-12">
+			<div class="card">
+				<div class="card-header" style="background-color: #f8f9fa; border-bottom: 2px solid #007bff;">
+					<h5 class="mb-0" style="color: #007bff;">
+						<i class="bi bi-sliders" style="margin-right: 8px;"></i>
+						General Settings
+					</h5>
+				</div>
+				<div class="card-body">
+					<form id="systemSettingsForm" method="POST" action="{{ url_for('settings.save_system_settings') }}">
+                <!-- CSRF Protection -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+						
+						<!-- First Row: School Name and School Website -->
+						<div class="row">
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="schoolName">
+										<i class="bi bi-building" style="margin-right: 5px; color: #007bff;"></i>
+										School Name
+									</label>
+									<input type="text" class="form-control" id="schoolName" name="school_name" 
+										   value="{{ system_settings.school_name }}" placeholder="Enter school name" required />
+									<small class="form-text text-muted">Official name of your institution</small>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="schoolWebsite">
+										<i class="bi bi-globe" style="margin-right: 5px; color: #007bff;"></i>
+										School Website
+									</label>
+									<input type="url" class="form-control" id="schoolWebsite" name="school_website" 
+										   value="{{ system_settings.school_website }}" placeholder="Enter school website URL" />
+									<small class="form-text text-muted">Official website of your institution</small>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Second Row: Contact Number and Email -->
+						<div class="row">
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="contactNumber">
+										<i class="bi bi-telephone" style="margin-right: 5px; color: #007bff;"></i>
+										Contact Number
+									</label>
+									<input type="tel" class="form-control" id="contactNumber" name="contact_number" 
+										   value="{{ system_settings.contact_number }}" placeholder="Enter contact number" />
+									<small class="form-text text-muted">Main contact number for the institution</small>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="emailAddress">
+										<i class="bi bi-envelope" style="margin-right: 5px; color: #007bff;"></i>
+										Email Address
+									</label>
+									<input type="email" class="form-control" id="emailAddress" name="email_address" 
+										   value="{{ system_settings.email_address }}" placeholder="Enter email address" />
+									<small class="form-text text-muted">Official email address for the institution</small>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Third Row: Academic Year and Semester -->
+						<div class="row">
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="academicYear">
+										<i class="bi bi-calendar" style="margin-right: 5px; color: #007bff;"></i>
+										Academic Year
+									</label>
+									<input type="text" class="form-control" id="academicYear" name="academic_year" 
+										   value="{{ system_settings.academic_year }}" placeholder="e.g., 2024-2025" />
+									<small class="form-text text-muted">Current academic year</small>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label class="font-weight-bold" for="semester">
+										<i class="bi bi-calendar-week" style="margin-right: 5px; color: #007bff;"></i>
+										Semester
+									</label>
+									<select class="form-control" id="semester" name="semester">
+										<option value="1st Semester" {% if system_settings.semester == '1st Semester' %}selected{% endif %}>1st Semester</option>
+										<option value="2nd Semester" {% if system_settings.semester == '2nd Semester' %}selected{% endif %}>2nd Semester</option>
+									</select>
+									<small class="form-text text-muted">Current semester</small>
+								</div>
+							</div>
+						</div>
+						
+						<!-- School Address - Full Width -->
+						<div class="row">
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="font-weight-bold" for="schoolAddress">
+										<i class="bi bi-geo-alt" style="margin-right: 5px; color: #007bff;"></i>
+										School Address
+									</label>
+									<textarea class="form-control" id="schoolAddress" name="school_address" rows="3" 
+											  placeholder="Enter complete school address">{{ system_settings.school_address }}</textarea>
+									<small class="form-text text-muted">Full address of your institution</small>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Action Buttons -->
+						<div class="row">
+							<div class="col-md-12">
+								<div class="form-group text-right">
+									<button type="submit" class="btn btn-primary">
+										<i class="bi bi-check-circle" style="margin-right: 5px;"></i>
+										Save Settings
+									</button>
+									<button type="button" class="btn btn-outline-secondary ml-2" onclick="resetForm()">
+										<i class="bi bi-arrow-clockwise" style="margin-right: 5px;"></i>
+										Reset
+									</button>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+// System settings form submission
+document.getElementById('systemSettingsForm').addEventListener('submit', function(e) {
+	const submitBtn = this.querySelector('button[type="submit"]');
+	const originalText = submitBtn.innerHTML;
+	
+	// Show loading state
+	submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm" style="margin-right: 5px;"></i>Saving...';
+	submitBtn.disabled = true;
+	
+	// Re-enable button after 3 seconds (in case of redirect delay)
+	setTimeout(() => {
+		submitBtn.innerHTML = originalText;
+		submitBtn.disabled = false;
+	}, 3000);
+});
+
+// Reset form function
+function resetForm() {
+	if (confirm('Are you sure you want to reset all fields to their original values?')) {
+		document.getElementById('systemSettingsForm').reset();
+	}
+}
+
+// Show success message if redirected with success
+$(document).ready(function() {
+	const urlParams = new URLSearchParams(window.location.search);
+	
+	if (urlParams.get('system_saved') === 'true') {
+		alert('System settings saved successfully!');
+		// Remove query parameter
+		window.history.replaceState({}, document.title, window.location.pathname);
+	}
+});
+</script>
+{% endblock %}
