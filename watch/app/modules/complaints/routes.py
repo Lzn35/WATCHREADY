@@ -9,6 +9,7 @@ from ...extensions import csrf
 from datetime import datetime
 import json
 import time
+import traceback
 from . import bp
 
 
@@ -104,7 +105,11 @@ def create_appointment():
 			}), 429  # Too Many Requests
 		
 		# Generate appointment number for today
-		appointment_number = Appointment.generate_appointment_number()
+		try:
+			appointment_number = Appointment.generate_appointment_number()
+		except Exception as e:
+			print(f"⚠️ Error generating appointment number: {e}")
+			appointment_number = None  # Will be set later or auto-generated
 		
 		# Create new appointment
 		appointment = Appointment(
@@ -118,11 +123,23 @@ def create_appointment():
 		)
 		
 		db.session.add(appointment)
-		db.session.commit()
-		
-		# Send notification about new appointment
 		try:
-			user = get_current_user()
+			db.session.commit()
+		except Exception as db_error:
+			db.session.rollback()
+			print(f"❌ Database commit error: {db_error}")
+			traceback.print_exc()
+			# Re-raise to be caught by outer exception handler
+			raise
+		
+		# Send notification about new appointment (wrapped in try-except to prevent 502 errors)
+		try:
+			# Get current user safely (returns None if not authenticated - OK for QR scan form)
+			try:
+				user = get_current_user()
+			except Exception:
+				user = None  # Safe fallback - QR scan form doesn't require authentication
+			
 			action_user_name = "Student"  # Default for QR code appointments
 			
 			# Only send notifications for student appointments (QR code) or when admin creates
@@ -159,43 +176,63 @@ def create_appointment():
 				print(f"✅ Notification sent for appointment {appointment.id}")
 		except Exception as e:
 			print(f"❌ Notification error: {e}")
+			traceback.print_exc()
 		
-		# Send acknowledgment email
-		EmailService.send_appointment_created(appointment)
+		# Send acknowledgment email (wrapped in try-except to prevent 502 errors)
+		# Email is sent asynchronously - failure shouldn't block appointment creation
+		try:
+			EmailService.send_appointment_created(appointment)
+		except Exception as e:
+			print(f"❌ Email sending error (non-critical): {e}")
+			traceback.print_exc()
+			# Don't fail the request if email fails - appointment was already created
 		
 		# Create persistent notification in database for ALL users (admin and discipline committee)
-		# Get all users (both admin and discipline committee)
-		from ...models import Role
-		all_users = User.query.join(User.role).filter(
-			Role.name.in_(['admin', 'user'])
-		).all()
+		# Get all users (both admin and discipline committee) - wrapped in try-except
+		try:
+			from ...models import Role
+			all_users = User.query.join(User.role).filter(
+				Role.name.in_(['admin', 'user'])
+			).all()
+			
+			# Create notification for each user (admin and discipline committee)
+			for user in all_users:
+				try:
+					Notification.create_notification(
+						title='New Appointment Request',
+						message=f'{appointment.full_name} requested a {appointment.appointment_type.lower()} appointment on {appointment.appointment_date.strftime("%b %d, %Y at %I:%M %p")}',
+						notification_type='appointment',
+						reference_id=appointment.id,
+						redirect_url=url_for('complaints.list_appointments'),
+						user_id=user.id  # Send to each user individually
+					)
+				except Exception as e:
+					print(f"❌ Error creating notification for user {user.id}: {e}")
+					# Continue with next user even if one fails
+		except Exception as e:
+			print(f"❌ Error fetching users for notifications: {e}")
+			traceback.print_exc()
+			# Don't fail the request if notification creation fails
 		
-		# Create notification for each user (admin and discipline committee)
-		for user in all_users:
-			Notification.create_notification(
-				title='New Appointment Request',
-				message=f'{appointment.full_name} requested a {appointment.appointment_type.lower()} appointment on {appointment.appointment_date.strftime("%b %d, %Y at %I:%M %p")}',
-				notification_type='appointment',
-				reference_id=appointment.id,
-				redirect_url=url_for('complaints.list_appointments'),
-				user_id=user.id  # Send to each user individually
-			)
-		
-		# Broadcast real-time notification
-		notification_data = {
-			'type': 'new_appointment',
-			'title': 'New Appointment Request',
-			'message': f'{appointment.full_name} requested a {appointment.appointment_type.lower()} appointment',
-			'timestamp': appointment.created_at.isoformat(),
-				'data': {
-					'appointment_id': appointment.id,
-					'full_name': appointment.full_name,
-					'appointment_type': appointment.appointment_type,
-					'appointment_date': appointment.appointment_date.strftime('%Y-%m-%d %I:%M %p'),
-					'appointment_description': getattr(appointment, 'appointment_description', '')
-				}
-		}
-		broadcast_notification(notification_data)
+		# Broadcast real-time notification (wrapped in try-except)
+		try:
+			notification_data = {
+				'type': 'new_appointment',
+				'title': 'New Appointment Request',
+				'message': f'{appointment.full_name} requested a {appointment.appointment_type.lower()} appointment',
+				'timestamp': appointment.created_at.isoformat(),
+					'data': {
+						'appointment_id': appointment.id,
+						'full_name': appointment.full_name,
+						'appointment_type': appointment.appointment_type,
+						'appointment_date': appointment.appointment_date.strftime('%Y-%m-%d %I:%M %p'),
+						'appointment_description': getattr(appointment, 'appointment_description', '')
+					}
+			}
+			broadcast_notification(notification_data)
+		except Exception as e:
+			print(f"❌ Error broadcasting notification: {e}")
+			# Don't fail the request if broadcast fails
 		
 		return jsonify({
 			'message': 'Appointment created successfully',
@@ -204,7 +241,16 @@ def create_appointment():
 		
 	except Exception as e:
 		db.session.rollback()
-		return jsonify({'error': str(e)}), 500
+		error_msg = str(e)
+		print(f"❌ Error creating appointment: {error_msg}")
+		traceback.print_exc()
+		
+		# Return user-friendly error message
+		# Don't expose internal error details in production
+		if current_app.debug:
+			return jsonify({'error': f'Error creating appointment: {error_msg}'}), 500
+		else:
+			return jsonify({'error': 'An error occurred while creating your appointment. Please try again or contact support.'}), 500
 
 
 @bp.put('/appointments/<int:appointment_id>/confirm')

@@ -4,6 +4,7 @@ from ...auth_utils import login_required
 from ...models import Schedule, AuditLog, AttendanceChecklist, AttendanceHistory, User
 from ...extensions import db, csrf
 from ...utils.safe_string import sanitize_string, safe_print, create_error_response
+from ...utils.timezone import get_ph_today, get_ph_weekday, get_ph_now
 from ...utils.validation import (
     validate_name, validate_subject_course, validate_room,
     sanitize_and_validate_text
@@ -23,10 +24,9 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 @login_required
 def list_checklists():
 	"""Attendance Checklist - Check and mark faculty attendance"""
-	# Get today's weekday (e.g., "Monday", "Tuesday", etc.)
-	today = date.today()
-	weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-	today_weekday = weekday_names[today.weekday()]
+	# Get today's date and weekday in Philippine timezone (not server timezone)
+	today = get_ph_today()  # Uses Philippine timezone (UTC+8)
+	today_weekday = get_ph_weekday()  # Get weekday name based on Philippine time
 	
 	# Fetch all schedules for today's weekday, sorted by start_time
 	schedules_query = Schedule.query.filter(
@@ -69,7 +69,7 @@ def schedule_management():
 	# Get schedules from database grouped by professor
 	professors_list = Schedule.get_schedules_by_professor()
 	
-	return render_template("attendance/schedule_management.html", professors=professors_list, date=date.today())
+	return render_template("attendance/schedule_management.html", professors=professors_list, date=get_ph_today())
 
 
 @bp.post('/schedule-management/add')
@@ -188,7 +188,7 @@ def edit_schedule_form(id):
 	return render_template("attendance/schedule_management.html", 
 						 professors=professors_list, 
 						 edit_schedule=schedule, 
-						 date=date.today())
+						 date=get_ph_today())
 
 
 @bp.post('/schedule-management/edit/<int:id>')
@@ -397,9 +397,9 @@ def attendance_history():
 	selected_date = request.args.get('date', '')
 	selected_month = request.args.get('month', '')
 	
-	# Default to today's date if no filter is provided
+	# Default to today's date if no filter is provided (Philippine timezone)
 	if not selected_date and not selected_month:
-		selected_date = date.today().strftime('%Y-%m-%d')
+		selected_date = get_ph_today().strftime('%Y-%m-%d')
 	
 	# Get attendance history from database
 	if selected_date:
@@ -423,8 +423,8 @@ def attendance_history():
 		except (ValueError, IndexError):
 			attendance_records = []
 	else:
-		# Default to today
-		attendance_records = AttendanceHistory.get_attendance_by_date(date.today())
+		# Default to today (Philippine timezone)
+		attendance_records = AttendanceHistory.get_attendance_by_date(get_ph_today())
 	
 	# Convert to template format
 	history = []
@@ -505,9 +505,10 @@ def generate_report():
 				end_date = date(year, month + 1, 1) - timedelta(days=1)
 			report_title = f"Monthly Attendance Report - {start_date.strftime('%B %Y')}"
 		else:
-			# All time report
-			start_date = date.today() - timedelta(days=30)  # Last 30 days
-			end_date = date.today()
+			# All time report (use Philippine timezone)
+			today_ph = get_ph_today()
+			start_date = today_ph - timedelta(days=30)  # Last 30 days
+			end_date = today_ph
 			report_title = f"Attendance Report - Last 30 Days"
 		
 		# Query attendance records
@@ -527,8 +528,8 @@ def generate_report():
 		
 		attendance_records = query.order_by(AttendanceHistory.date.desc()).all()
 		
-		# Generate PDF report
-		pdf_filename = f"attendance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+		# Generate PDF report (use Philippine timezone)
+		pdf_filename = f"attendance_report_{get_ph_now().strftime('%Y%m%d_%H%M%S')}.pdf"
 		temp_dir = tempfile.gettempdir()
 		pdf_path = os.path.join(temp_dir, pdf_filename)
 		
@@ -568,7 +569,7 @@ def generate_report():
 			['Total Records:', str(len(attendance_records))],
 			['Faculty Filter:', faculty_filter if faculty_filter else 'All Faculty'],
 			['Status Filter:', status_filter if status_filter else 'All Status'],
-			['Generated On:', datetime.now().strftime('%B %d, %Y at %I:%M %p')]
+			['Generated On:', get_ph_now().strftime('%B %d, %Y at %I:%M %p')]
 		]
 		
 		summary_table = Table(summary_data, colWidths=[2*inch, 4*inch])
@@ -720,7 +721,8 @@ def update_attendance():
 		if status not in valid_statuses:
 			return jsonify({'success': False, 'message': 'Invalid status'}), 400
 		
-		today = date.today()
+		# Use Philippine timezone for today's date
+		today = get_ph_today()
 		
 		# Update or insert attendance checklist for today
 		existing_checklist = AttendanceChecklist.query.filter_by(
@@ -731,7 +733,7 @@ def update_attendance():
 		if existing_checklist:
 			# Update existing record
 			existing_checklist.status = status
-			existing_checklist.created_at = datetime.utcnow()
+			existing_checklist.created_at = get_ph_now()  # Use Philippine timezone
 		else:
 			# Create new record
 			new_checklist = AttendanceChecklist(

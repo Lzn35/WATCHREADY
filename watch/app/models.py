@@ -225,14 +225,16 @@ class AttendanceChecklist(db.Model):
 	
 	@staticmethod
 	def get_todays_attendance():
-		"""Get all attendance records for today"""
-		today = date.today()
+		"""Get all attendance records for today (Philippine timezone)"""
+		from ..utils.timezone import get_ph_today
+		today = get_ph_today()
 		return AttendanceChecklist.query.filter_by(date=today).all()
 	
 	@staticmethod
 	def get_professor_attendance_today(professor_name):
-		"""Get attendance record for a specific professor today"""
-		today = date.today()
+		"""Get attendance record for a specific professor today (Philippine timezone)"""
+		from ..utils.timezone import get_ph_today
+		today = get_ph_today()
 		return AttendanceChecklist.query.filter_by(
 			professor_name=professor_name, 
 			date=today
@@ -548,9 +550,9 @@ class Appointment(db.Model, TimestampMixin):
 	
 	@staticmethod
 	def get_appointments_by_email_today(email):
-		"""Get appointments by email for today (for spam protection)"""
-		from datetime import datetime, date
-		today = date.today()
+		"""Get appointments by email for today (for spam protection) - Philippine timezone"""
+		from ..utils.timezone import get_ph_today
+		today = get_ph_today()
 		return Appointment.query.filter(
 			Appointment.email == email,
 			db.func.date(Appointment.created_at) == today
@@ -564,9 +566,9 @@ class Appointment(db.Model, TimestampMixin):
 	
 	@staticmethod
 	def generate_appointment_number():
-		"""Generate daily appointment number (APT-001, APT-002, etc.)"""
-		from datetime import datetime, date
-		today = date.today()
+		"""Generate daily appointment number (APT-001, APT-002, etc.) - Philippine timezone"""
+		from ..utils.timezone import get_ph_today
+		today = get_ph_today()
 		
 		# Count appointments created today
 		today_count = Appointment.query.filter(

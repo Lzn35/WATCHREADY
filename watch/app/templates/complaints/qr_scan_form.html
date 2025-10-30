@@ -274,16 +274,34 @@ $(document).ready(function() {
                 $('#appointmentDate').attr('min', today);
                 $('#appointmentTime').val('09:00');
             },
-            error: function(xhr) {
-                const response = xhr.responseJSON || {};
-                const errorMessage = response.error || 'An error occurred while submitting your appointment request. Please try again.';
+            error: function(xhr, status, error) {
+                console.error('Appointment submission error:', {
+                    status: status,
+                    error: error,
+                    response: xhr.responseJSON,
+                    statusCode: xhr.status,
+                    responseText: xhr.responseText
+                });
                 
-                // Special handling for spam protection
-                if (xhr.status === 429 && response.spam_protection) {
+                const response = xhr.responseJSON || {};
+                let errorMessage = response.error || 'An error occurred while submitting your appointment request. Please try again.';
+                
+                // Handle different HTTP status codes
+                if (xhr.status === 502 || xhr.status === 503 || xhr.status === 504) {
+                    errorMessage = 'Server is temporarily unavailable. Please try again in a few moments.';
+                } else if (xhr.status === 429 && response.spam_protection) {
+                    // Special handling for spam protection
                     showSpamAlert(errorMessage, response.daily_count || 0);
-                } else {
-                    showAlert(errorMessage, 'danger');
+                    return;
+                } else if (xhr.status === 400) {
+                    errorMessage = response.error || 'Invalid request. Please check your information and try again.';
+                } else if (xhr.status === 500) {
+                    errorMessage = response.error || 'A server error occurred. Please try again or contact support.';
+                } else if (xhr.status === 0 || !xhr.status) {
+                    errorMessage = 'Network error. Please check your internet connection and try again.';
                 }
+                
+                showAlert(errorMessage, 'danger');
             },
             complete: function() {
                 // Reset button state
