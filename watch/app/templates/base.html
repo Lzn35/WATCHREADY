@@ -565,6 +565,173 @@
 		{% endif %}
 	</script>
 
+	<!-- Idle Timeout - 5 minutes inactivity auto logout -->
+	<script>
+		{% if is_authenticated %}
+		(function() {
+			var idleTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
+			var warningTimeout = 4 * 60 * 1000; // Show warning at 4 minutes (1 minute before logout)
+			var lastActivity = Date.now();
+			var idleTimer;
+			var warningTimer;
+			var warningShown = false;
+			
+			// Activity events that reset the timer
+			var activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+			
+			// Function to reset idle timer
+			function resetIdleTimer() {
+				lastActivity = Date.now();
+				clearTimeout(idleTimer);
+				clearTimeout(warningTimer);
+				warningShown = false;
+				
+				// Hide warning if shown
+				var warningModal = document.getElementById('idle-warning-modal');
+				if (warningModal) {
+					warningModal.style.display = 'none';
+				}
+				
+				// Set warning timer (show warning 1 minute before logout)
+				warningTimer = setTimeout(showIdleWarning, warningTimeout);
+				
+				// Set logout timer
+				idleTimer = setTimeout(performAutoLogout, idleTimeout);
+			}
+			
+			// Function to show idle warning
+			function showIdleWarning() {
+				if (warningShown) return;
+				warningShown = true;
+				
+				// Create or show warning modal
+				var modal = document.getElementById('idle-warning-modal');
+				if (!modal) {
+					modal = document.createElement('div');
+					modal.id = 'idle-warning-modal';
+					modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99999; display: flex; align-items: center; justify-content: center;';
+					modal.innerHTML = `
+						<div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+							<div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
+							<h3 style="margin: 0 0 15px 0; color: #333;">Session Timeout Warning</h3>
+							<p style="margin: 0 0 20px 0; color: #666;">You have been idle for 4 minutes.</p>
+							<p style="margin: 0 0 20px 0; color: #e74c3c; font-weight: bold; font-size: 18px;">You will be logged out in <span id="idle-countdown">60</span> seconds</p>
+							<button id="stay-logged-in-btn" style="background: #3498db; color: white; border: none; padding: 12px 30px; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">
+								Stay Logged In
+							</button>
+						</div>
+					`;
+					document.body.appendChild(modal);
+					
+					// Add click handler for stay logged in button
+					document.getElementById('stay-logged-in-btn').addEventListener('click', function(e) {
+						e.stopPropagation();
+						resetIdleTimer();
+						// Send activity to server to reset server-side session
+						resetServerSession();
+					});
+				} else {
+					// If modal exists but was hidden, show it again
+					modal.style.display = 'flex';
+				}
+				
+				// Start countdown
+				var countdown = 60;
+				var countdownElement = document.getElementById('idle-countdown');
+				var countdownInterval = setInterval(function() {
+					countdown--;
+					if (countdownElement) {
+						countdownElement.textContent = countdown;
+					}
+					if (countdown <= 0) {
+						clearInterval(countdownInterval);
+					}
+				}, 1000);
+			}
+			
+			// Function to reset server session
+			function resetServerSession() {
+				// Send a heartbeat request to server to keep session alive
+				fetch('{{ url_for("auth.session_heartbeat") }}', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({})
+				}).then(function(response) {
+					if (response.ok) {
+						// Session refreshed successfully
+						console.log('Session refreshed on server');
+					}
+				}).catch(function(error) {
+					console.log('Heartbeat request failed:', error);
+				});
+			}
+			
+			// Function to perform auto logout
+			function performAutoLogout() {
+				// Clear timers
+				clearTimeout(idleTimer);
+				clearTimeout(warningTimer);
+				
+				// Show logout message
+				var logoutModal = document.createElement('div');
+				logoutModal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99999; display: flex; align-items: center; justify-content: center;';
+				logoutModal.innerHTML = `
+					<div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+						<div style="font-size: 48px; margin-bottom: 15px;">🔒</div>
+						<h3 style="margin: 0 0 15px 0; color: #333;">Session Expired</h3>
+						<p style="margin: 0 0 20px 0; color: #666;">You have been logged out due to inactivity.</p>
+						<p style="margin: 0; color: #666;">Redirecting to login page...</p>
+					</div>
+				`;
+				document.body.appendChild(logoutModal);
+				
+				// Send logout request
+				const csrfToken = document.querySelector('meta[name="csrf-token"]');
+				const formData = new FormData();
+				if (csrfToken) {
+					formData.append('csrf_token', csrfToken.content);
+				}
+				formData.append('reason', 'idle timeout (5 minutes inactivity)');
+				
+				// Use sendBeacon for logout
+				navigator.sendBeacon('{{ url_for("auth.auto_logout") }}', formData);
+				
+				// Redirect after 2 seconds
+				setTimeout(function() {
+					window.location.href = '{{ url_for("auth.login") }}';
+				}, 2000);
+			}
+			
+			// Attach activity listeners
+			activityEvents.forEach(function(event) {
+				document.addEventListener(event, function() {
+					// Reset timer on any activity, even if warning is shown
+					// This allows user to interact and stay logged in
+					resetIdleTimer();
+				}, true);
+			});
+			
+			// Also listen for focus events (user switches back to tab)
+			window.addEventListener('focus', function() {
+				resetIdleTimer();
+			});
+			
+			// Initialize timers on page load
+			resetIdleTimer();
+			
+			// Reset timer when page becomes visible
+			document.addEventListener('visibilitychange', function() {
+				if (!document.hidden) {
+					resetIdleTimer();
+				}
+			});
+		})();
+		{% endif %}
+	</script>
+
 	{% block extra_js %}{% endblock %}
 </body>
 </html>

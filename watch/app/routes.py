@@ -106,13 +106,9 @@ def profile():
 	# Get last 10 activity logs for the current user (LIFO order)
 	activity_logs = ActivityLog.get_user_logs(user_id, limit=10)
 	
-	# Get email settings
+	# Get email settings (use get_settings() to ensure it exists)
 	from .models import EmailSettings
-	email_settings = EmailSettings.query.first()
-	if not email_settings:
-		email_settings = EmailSettings()
-		db.session.add(email_settings)
-		db.session.commit()
+	email_settings = EmailSettings.get_settings()
 	
 	return render_template("profile.html", user=user, activity_logs=activity_logs, email_settings=email_settings)
 

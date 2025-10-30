@@ -5,8 +5,11 @@ Handles transparent notifications between Discipline Officer and Discipline Comm
 """
 
 from datetime import datetime
+import logging
 from ..extensions import db
 from ..models import Notification, User, Role
+
+logger = logging.getLogger(__name__)
 
 class NotificationService:
     """Service for managing notifications with transparency logic"""
@@ -17,12 +20,16 @@ class NotificationService:
         Create notification for Discipline Officer (Admin) to see all actions
         """
         # Find all admin users (discipline officers)
-        admin_role = Role.query.filter_by(name='Admin').first()
+        admin_role = Role.query.filter_by(name='admin').first()
         if not admin_role:
+            # Log error for debugging - role name must be lowercase 'admin'
+            logger.error("Admin role not found! Expected role name 'admin' (lowercase). Notifications will not be sent.")
             return None
         
         admin_users = User.query.filter_by(role_id=admin_role.id).all()
         if not admin_users:
+            # Log warning if no admin users exist
+            logger.warning("No admin users found! Notifications will not be sent.")
             return None
         
         # Create notifications for all admin users
@@ -158,7 +165,7 @@ class NotificationService:
         )
         
         # Notify all committee members (only appointment notifications)
-        committee_role = Role.query.filter_by(name='User').first()  # Assuming 'User' role is for committee
+        committee_role = Role.query.filter_by(name='user').first()  # Role name must be lowercase 'user'
         if committee_role:
             committee_users = User.query.filter_by(role_id=committee_role.id).all()
             for committee_user in committee_users:
@@ -170,6 +177,9 @@ class NotificationService:
                     redirect_url=redirect_url,
                     committee_user_id=committee_user.id
                 )
+        else:
+            # Log warning if committee role not found
+            logger.warning("Committee role ('user') not found! Committee members will not receive appointment notifications.")
         
         return admin_notification
     

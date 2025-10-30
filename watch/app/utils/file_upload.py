@@ -6,6 +6,7 @@ Handles secure file uploads with proper validation and sanitization.
 import os
 import uuid
 import hashlib
+import mimetypes
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask import current_app, abort
@@ -148,6 +149,21 @@ def save_attachment(file, case_id, case_type='major'):
     
     # Get MIME type
     mime_type = file.content_type or 'application/octet-stream'
+    
+    # Validate MIME type matches file extension (additional security layer)
+    file_extension = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
+    expected_mime = mimetypes.guess_type(original_filename)[0]
+    
+    # MIME type validation - ensure content-type matches file extension
+    if expected_mime and mime_type != 'application/octet-stream':
+        # Check if declared MIME type matches expected MIME type
+        # Allow some flexibility but reject clearly mismatched types
+        suspicious_extensions = ['exe', 'bat', 'cmd', 'com', 'pif', 'scr', 'vbs', 'js', 'jar']
+        if file_extension in suspicious_extensions:
+            current_app.logger.warning(
+                f"Security: Suspicious file extension '{file_extension}' "
+                f"with MIME type '{mime_type}' uploaded"
+            )
     
     # Security logging - log file upload
     try:

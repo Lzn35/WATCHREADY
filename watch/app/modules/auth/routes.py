@@ -1,6 +1,6 @@
 from flask import jsonify, request, render_template, redirect, url_for, flash, session, make_response
 from ...models import User
-from ...auth_utils import login_user, logout_user, is_authenticated
+from ...auth_utils import login_user, logout_user, is_authenticated, login_required
 from ...extensions import db, limiter, csrf
 from . import bp
 
@@ -14,7 +14,7 @@ def login():
 
 
 @bp.post('/login')
-@limiter.limit('5 per minute')
+@limiter.limit('5 per 5 minutes')
 def login_post():
 	# If user is already logged in, redirect to dashboard
 	if is_authenticated():
@@ -134,16 +134,19 @@ def logout():
 @bp.post('/auto-logout')
 @csrf.exempt  # Exempt from CSRF as this is called via sendBeacon on page unload
 def auto_logout():
-	"""Handle automatic logout when browser/tab closes"""
+	"""Handle automatic logout when browser/tab closes or idle timeout"""
 	# Log the auto logout activity if user is logged in
 	if is_authenticated():
 		from ...models import AuditLog
 		username = session.get('username', 'Unknown')
 		user_id = session.get('user_id')
 		
+		# Determine logout reason
+		logout_reason = request.form.get('reason', 'browser/tab closed')
+		
 		AuditLog.log_activity(
 			action_type='Auto Logout',
-			description=f'User {username} automatically logged out (browser/tab closed)',
+			description=f'User {username} automatically logged out ({logout_reason})',
 			user_id=user_id,
 			ip_address=request.remote_addr,
 			user_agent=request.headers.get('User-Agent')
@@ -154,6 +157,30 @@ def auto_logout():
 	
 	# Return success response (no redirect needed for beacon)
 	return '', 204  # 204 No Content
+
+
+@bp.post('/session-heartbeat')
+@csrf.exempt  # Allow heartbeat without CSRF for convenience
+def session_heartbeat():
+	"""Reset session timeout on user activity - called by client-side inactivity timer"""
+	try:
+		# Check if user is authenticated
+		if not is_authenticated():
+			return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+		
+		# Refresh session by touching it - this resets the session expiration time
+		user_id = session.get('user_id')
+		if user_id:
+			# Update session to reset timeout
+			session.permanent = True
+			# Touch session by modifying it slightly
+			session['last_activity'] = request.headers.get('User-Agent', '')
+			# Return success
+			return jsonify({'success': True, 'message': 'Session refreshed'}), 200
+		else:
+			return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+	except Exception as e:
+		return jsonify({'success': False, 'message': 'Error refreshing session'}), 500
 
 
 

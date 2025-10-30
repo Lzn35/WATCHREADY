@@ -100,11 +100,11 @@ class Config:
         for x in os.getenv("ALLOWED_EXTENSIONS", "jpg,jpeg,png,gif,bmp,webp,pdf,docx,doc,txt,rtf,mp4,avi,mov,wmv,flv,webm,mp3,wav,zip,rar,7z").split(",")
     )
     
-    # Session Security - Auto logout when browser/tab closes
+    # Session Security - Auto logout when browser/tab closes or after inactivity
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() in ("1", "true", "yes")
-    PERMANENT_SESSION_LIFETIME = 86400  # 24 hours for CSRF token stability
+    PERMANENT_SESSION_LIFETIME = 300  # 5 minutes idle timeout - automatic logout after inactivity
     SESSION_PERMANENT = False  # Session expires when browser closes
     # Note: SESSION_COOKIE_SECURE should be True in actual production under HTTPS
     

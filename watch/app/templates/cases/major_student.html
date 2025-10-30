@@ -947,11 +947,13 @@ function viewPersonCases(personId) {
 					if (case_item.case_type === 'major') {
 						var attachmentHtml = '';
 						if (case_item.has_attachment) {
+							// Escape filename to prevent XSS
+							var safeFilename = (case_item.attachment_filename || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 							attachmentHtml = '<div class="mt-2">' +
 								'<span class="badge badge-info">' +
 								'<i class="bi bi-paperclip" style="margin-right: 3px;"></i>' +
-								'<a href="{{ url_for("cases.view_attachment", case_id=0) }}'.replace('0', case_item.id) + '" target="_blank" style="color: white; text-decoration: none;" title="View ' + case_item.attachment_filename + '">' +
-								case_item.attachment_filename + '</a>' +
+								'<a href="{{ url_for("cases.view_attachment", case_id=0) }}'.replace('0', case_item.id) + '" target="_blank" style="color: white; text-decoration: none;" title="View ' + safeFilename + '">' +
+								safeFilename + '</a>' +
 								'</span>' +
 								'</div>';
 						}

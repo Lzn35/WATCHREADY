@@ -300,7 +300,12 @@ Best regards,
             bool: True if email was sent successfully, False otherwise
         """
         try:
-            subject = "Appointment Request Received - Discipline Officer"
+            # Get email settings for sender name and email
+            email_settings_db = EmailSettings.get_settings()
+            sender_name = email_settings_db.sender_name or "Discipline Office"
+            contact_email = email_settings_db.sender_email or "discipline@school.edu"
+            
+            subject = "Appointment Request Received - Discipline Office"
             
             body = f"""
 Dear {appointment.full_name},
@@ -315,24 +320,21 @@ Appointment Details:
 
 You will receive another email once your appointment is confirmed by the Discipline Officer.
 
+If you have any questions, please contact us at: {contact_email}
+
 Best regards,
+{sender_name}
 Discipline Office
             """.strip()
             
-            # Log the email (in production, this would send actual email)
-            logger.info(f"EMAIL SENT - Created to {appointment.email}")
-            logger.info(f"Subject: {subject}")
-            logger.info(f"Body: {body}")
-            
-            print(f"\n{'='*60}")
-            print(f"EMAIL NOTIFICATION SENT")
-            print(f"{'='*60}")
-            print(f"To: {appointment.email}")
-            print(f"Subject: {subject}")
-            print(f"Body:\n{body}")
-            print(f"{'='*60}\n")
-            
-            return True
+            # Send the actual email using saved email settings
+            return EmailService.send_email(
+                to_email=appointment.email,
+                subject=subject,
+                body=body,
+                from_name=sender_name,
+                from_email=None  # Use email from settings
+            )
             
         except Exception as e:
             logger.error(f"Failed to send created email: {e}")

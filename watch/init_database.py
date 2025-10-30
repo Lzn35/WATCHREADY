@@ -49,13 +49,13 @@ def init_database():
             # Create default roles
             print("Creating default roles...")
             try:
-                admin_role = Role(name='Admin')
-                user_role = Role(name='User')
+                admin_role = Role(name='admin')
+                user_role = Role(name='user')
                 
                 db.session.add(admin_role)
                 db.session.add(user_role)
                 db.session.commit()
-                print("✓ Created roles: Admin, User")
+                print("✓ Created roles: admin, user")
             except Exception as e:
                 print(f"✗ Error creating roles: {e}")
                 db.session.rollback()
@@ -64,7 +64,7 @@ def init_database():
         print()
         
         # Check if admin user already exists
-        existing_admin = User.query.join(Role).filter(Role.name == 'Admin').first()
+        existing_admin = User.query.join(Role).filter(Role.name == 'admin').first()
         if existing_admin:
             print(f"⚠ Admin user already exists: {existing_admin.username}")
             print("  Skipping admin user creation.")
@@ -72,7 +72,7 @@ def init_database():
             # Create default admin user
             print("Creating default admin user...")
             try:
-                admin_role = Role.query.filter_by(name='Admin').first()
+                admin_role = Role.query.filter_by(name='admin').first()
                 if not admin_role:
                     print("✗ Error: Admin role not found!")
                     return False

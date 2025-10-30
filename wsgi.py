@@ -104,36 +104,33 @@ try:
         db.session.commit()
         print("✓ Roles cleaned up and committed")
         
-        # Clean up existing users - keep only one default admin
-        print("✓ Cleaning up existing users...")
+        # Check if this is a fresh database (no users exist)
+        # Only initialize default admin if database is empty
+        existing_users_count = User.query.count()
         
-        # Clean up audit logs first to avoid foreign key constraints
-        from app.models import AuditLog, ActivityLog
-        AuditLog.query.delete()
-        ActivityLog.query.delete()
-        print("✓ Cleaned up audit logs and activity logs")
-        
-        # Delete all existing users to start fresh
-        User.query.delete()
-        print("✓ Deleted all existing users")
-        
-        # Create ONLY ONE default admin account for Discipline Officer
-        admin_user = User(
-            username='admin',
-            password_hash=generate_password_hash('admin123'),
-            role_id=admin_role.id,
-            is_protected=True,
-            full_name='Discipline Officer',
-            email='admin@sti-watch.com',
-            is_active=True
-        )
-        db.session.add(admin_user)
-        print("✓ Created default admin account: admin / admin123 (Discipline Officer)")
-        
-        # Note: No default user account - Discipline Officer can create users via User Management
+        if existing_users_count == 0:
+            # Fresh database - create default admin account
+            print("✓ Fresh database detected - creating default admin account...")
+            admin_user = User(
+                username='admin',
+                password_hash=generate_password_hash('admin123'),
+                role_id=admin_role.id,
+                is_protected=True,
+                full_name='Discipline Officer',
+                email='admin@sti-watch.com',
+                is_active=True
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            print("✓ Created default admin account: admin / admin123 (Discipline Officer)")
+            print("⚠️ IMPORTANT: Change this password immediately after first login!")
+        else:
+            # Database already has users - don't touch them
+            print(f"✓ Database already has {existing_users_count} user(s) - skipping user initialization")
+            print("✓ Existing users preserved - no changes made")
         
         db.session.commit()
-        print("✓ Database initialized successfully!")
+        print("✓ Database initialization complete!")
         
 except Exception as e:
     print(f"❌ Database initialization error: {e}")

@@ -6,6 +6,43 @@ from typing import Any, Optional
 from datetime import datetime, date
 
 
+def validate_integer_id(id_value: Any, field_name: str = "ID") -> tuple[bool, str, Optional[int]]:
+    """
+    Safely validate and convert an ID value to integer.
+    
+    Args:
+        id_value: The ID value to validate
+        field_name: Name of the field for error messages
+    
+    Returns:
+        tuple: (is_valid, error_message, integer_id)
+    """
+    if id_value is None:
+        return False, f"{field_name} is required.", None
+    
+    try:
+        # Convert to string first to handle various types
+        str_value = str(id_value).strip()
+        if not str_value:
+            return False, f"{field_name} cannot be empty.", None
+        
+        # Convert to integer
+        int_value = int(str_value)
+        
+        # Check if it's positive
+        if int_value <= 0:
+            return False, f"{field_name} must be a positive integer.", None
+        
+        # Check reasonable upper limit (prevent DoS)
+        if int_value > 2147483647:  # Max 32-bit signed integer
+            return False, f"{field_name} value too large.", None
+        
+        return True, "", int_value
+        
+    except (ValueError, TypeError, AttributeError):
+        return False, f"{field_name} must be a valid integer.", None
+
+
 def is_valid_text_input(value: Any, field_name: str = "Field", min_length: int = 1, max_length: Optional[int] = None) -> tuple[bool, str]:
     """
     Validate text input to prevent whitespace-only entries
