@@ -52,7 +52,10 @@ def login_post():
 			return render_template("login.html")
 		
 		# Login successful
-		login_user(user)
+		# Check if "Remember Me" checkbox was checked
+		remember = request.form.get('remember', '').lower() in ('on', 'true', '1', 'yes')
+		# Default: remember=False means session expires when browser/tab closes
+		login_user(user, remember=remember)
 		
 		# Log the login activity
 		from ...models import AuditLog
@@ -169,11 +172,11 @@ def session_heartbeat():
 			return jsonify({'success': False, 'message': 'Not authenticated'}), 401
 		
 		# Refresh session by touching it - this resets the session expiration time
+		# But DON'T change session.permanent - respect the user's original choice
 		user_id = session.get('user_id')
 		if user_id:
-			# Update session to reset timeout
-			session.permanent = True
-			# Touch session by modifying it slightly
+			# Touch session by modifying it slightly (keeps current permanent setting)
+			# Don't force permanent=True - let the session expire when browser closes if user chose that
 			session['last_activity'] = request.headers.get('User-Agent', '')
 			# Return success
 			return jsonify({'success': True, 'message': 'Session refreshed'}), 200

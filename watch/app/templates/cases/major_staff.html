@@ -749,6 +749,64 @@ $(document).ready(function() {
 						if (data.description) {
 							$('#description').val(data.description);
 						}
+						if (data.date) {
+							// Try to parse and format date for date input (YYYY-MM-DD)
+							const parsedDate = parseDate(data.date);
+							if (parsedDate) {
+								$('#date').val(parsedDate);
+							}
+						}
+						
+						// Helper function to parse various date formats to YYYY-MM-DD
+						function parseDate(dateStr) {
+							if (!dateStr) return null;
+							
+							// Try ISO format first (2025-10-07 or 2025/10/07)
+							const isoMatch = dateStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+							if (isoMatch) {
+								const year = isoMatch[1];
+								const month = isoMatch[2].padStart(2, '0');
+								const day = isoMatch[3].padStart(2, '0');
+								return `${year}-${month}-${day}`;
+							}
+							
+							// Try US format (10/7/2025 or 10-7-2025)
+							const usMatch = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+							if (usMatch) {
+								const month = usMatch[1].padStart(2, '0');
+								const day = usMatch[2].padStart(2, '0');
+								const year = usMatch[3];
+								return `${year}-${month}-${day}`;
+							}
+							
+							// Try full month name (October 7, 2025 or Oct 7, 2025)
+							const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+								'july', 'august', 'september', 'october', 'november', 'december'];
+							const monthAbbr = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+								'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+							
+							const textMatch = dateStr.match(/([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/i);
+							if (textMatch) {
+								const monthName = textMatch[1].toLowerCase();
+								const monthIndex = monthNames.indexOf(monthName);
+								if (monthIndex === -1) {
+									const abbrIndex = monthAbbr.indexOf(monthName);
+									if (abbrIndex !== -1) {
+										const month = (abbrIndex + 1).toString().padStart(2, '0');
+										const day = textMatch[2].padStart(2, '0');
+										const year = textMatch[3];
+										return `${year}-${month}-${day}`;
+									}
+								} else {
+									const month = (monthIndex + 1).toString().padStart(2, '0');
+									const day = textMatch[2].padStart(2, '0');
+									const year = textMatch[3];
+									return `${year}-${month}-${day}`;
+								}
+							}
+							
+							return null;
+						}
 
 						// Show extraction results
 						let message = 'Staff data extracted successfully!\n\n';
@@ -757,6 +815,7 @@ $(document).ready(function() {
 						if (data.first_name) message += `• First Name: ${data.first_name}\n`;
 						if (data.last_name) message += `• Last Name: ${data.last_name}\n`;
 						if (data.position) message += `• Position: ${data.position}\n`;
+						if (data.date) message += `• Date: ${data.date}\n`;
 						if (data.category) message += `• Category: ${data.category}\n`;
 						if (data.specific_offense) message += `• Specific Offense: ${data.specific_offense}\n`;
 

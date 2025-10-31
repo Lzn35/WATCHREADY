@@ -197,7 +197,8 @@ class OCRService:
             'last_name': None,
             'first_name': None,
             'program': None,
-            'section': None
+            'section': None,
+            'date': None
         }
         
         # Clean and normalize text
@@ -215,6 +216,9 @@ class OCRService:
         # Extract section
         result['section'] = cls._extract_section(text)
         
+        # Extract date
+        result['date'] = cls._extract_date(text)
+        
         return result
     
     @classmethod
@@ -223,7 +227,8 @@ class OCRService:
         result = {
             'last_name': None,
             'first_name': None,
-            'department': None
+            'department': None,
+            'date': None
         }
         
         # Clean and normalize text
@@ -238,6 +243,9 @@ class OCRService:
         # Extract department
         result['department'] = cls._extract_department(text)
         
+        # Extract date
+        result['date'] = cls._extract_date(text)
+        
         return result
     
     @classmethod
@@ -246,7 +254,8 @@ class OCRService:
         result = {
             'last_name': None,
             'first_name': None,
-            'position': None
+            'position': None,
+            'date': None
         }
         
         # Clean and normalize text
@@ -260,6 +269,9 @@ class OCRService:
         
         # Extract position
         result['position'] = cls._extract_position(text)
+        
+        # Extract date
+        result['date'] = cls._extract_date(text)
         
         return result
     
@@ -482,6 +494,30 @@ class OCRService:
                 offense = match.group(0).strip()
                 if offense:
                     return offense.title()
+        return None
+    
+    @classmethod
+    def _extract_date(cls, text: str) -> Optional[str]:
+        """Extract incident date from text"""
+        # Try template pattern first
+        date_patterns = [
+            r'Date[:\-]?\s*([^\n\r]+)',  # "Date: October 7, 2025" or "Date - 10/7/2025"
+            r'(?:on|date|dated)\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',  # "on October 7, 2025"
+            r'(?:on|date|dated)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})',  # "on 10/7/2025" or "on 10-7-2025"
+            r'(?:on|date|dated)\s+(\d{4}[-/]\d{2}[-/]\d{2})',  # "on 2025-10-07" or "on 2025/10/07"
+            r'(?:incident|reported|occurred|happened)\s+on\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',  # "incident on October 7, 2025"
+            r'(?:incident|reported|occurred|happened)\s+on\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})',  # "incident on 10/7/2025"
+        ]
+        
+        for pattern in date_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                date_str = match.group(1).strip()
+                if date_str and len(date_str) > 5:  # At least "10/7/25" format
+                    # Clean up date string
+                    date_str = re.sub(r'\s+', ' ', date_str)
+                    return date_str
+        
         return None
     
     @classmethod

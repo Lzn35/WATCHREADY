@@ -13,7 +13,11 @@ def create_app(config_class=Config):
     
     # Configure sessions - Auto logout when browser closes
     app.config['SESSION_TYPE'] = 'filesystem'
+    # Ensure sessions are NOT permanent by default - expire when browser/tab closes
     app.config['SESSION_PERMANENT'] = False  # Session expires when browser closes
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    # Don't set max_age for session cookies - they expire when browser closes
     app.config['SESSION_USE_SIGNER'] = True
     app.config['SESSION_KEY_PREFIX'] = 'watch:'
     # PERMANENT_SESSION_LIFETIME controlled by config class

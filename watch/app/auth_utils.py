@@ -73,11 +73,19 @@ def get_current_user():
     return None
 
 
-def login_user(user):
-    """Log in a user by setting session"""
+def login_user(user, remember=False):
+    """Log in a user by setting session
+    
+    Args:
+        user: User object to log in
+        remember: If True, session persists across browser restarts. 
+                  If False (default), session expires when browser/tab closes.
+    """
     session['user_id'] = user.id
     session['username'] = user.username
-    session.permanent = True  # Make session permanent (respects PERMANENT_SESSION_LIFETIME)
+    # Only make session permanent if "Remember Me" is checked
+    # Default: session expires when browser/tab closes
+    session.permanent = remember
 
 
 def logout_user():
