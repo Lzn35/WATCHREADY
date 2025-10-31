@@ -39,10 +39,38 @@ def list_checklists():
 		today_weekday = weekday_names[today.weekday()]
 	
 	try:
+		# Debug: Print weekday being searched
+		print(f"🔍 Looking for schedules on: '{today_weekday}'")
+		
+		# Get all schedules first for debugging
+		all_schedules = Schedule.query.all()
+		print(f"📋 Total schedules in database: {len(all_schedules)}")
+		
 		# Fetch all schedules for today's weekday, sorted by start_time
+		# Try exact match first (most common case)
 		schedules_query = Schedule.query.filter(
 			Schedule.day_of_week == today_weekday
 		).order_by(Schedule.start_time.asc()).all()
+		
+		# If no results, try case-insensitive match (for edge cases)
+		if not schedules_query and all_schedules:
+			# Filter in Python (more reliable than SQL functions)
+			today_weekday_lower = today_weekday.lower().strip()
+			schedules_query = [
+				sched for sched in all_schedules
+				if sched.day_of_week and sched.day_of_week.lower().strip() == today_weekday_lower
+			]
+			# Sort by start_time
+			schedules_query.sort(key=lambda x: x.start_time)
+		
+		print(f"✅ Found {len(schedules_query)} schedule(s) for {today_weekday}")
+		
+		# Debug: Show what schedules exist for each day
+		weekday_counts = {}
+		for sched in all_schedules:
+			day = sched.day_of_week or 'Unknown'
+			weekday_counts[day] = weekday_counts.get(day, 0) + 1
+		print(f"📊 Schedules by day: {weekday_counts}")
 		
 		# Get today's attendance records
 		todays_attendance = {record.professor_name: record.status for record in AttendanceChecklist.get_todays_attendance()}

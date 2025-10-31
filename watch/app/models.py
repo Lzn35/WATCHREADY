@@ -736,8 +736,8 @@ class EmailSettings(db.Model):
 	def __repr__(self):
 		return f'<EmailSettings {self.id}: {self.provider} - {self.sender_email}>'
 	
-	@staticmethod
-	def get_settings():
+@staticmethod
+def get_settings():
 		"""Get email settings (creates default if doesn't exist)"""
 		settings = EmailSettings.query.first()
 		if not settings:
@@ -751,8 +751,13 @@ class EmailSettings(db.Model):
 				outlook_password='',
 				sender_name='Discipline Office'
 			)
-			db.session.add(settings)
-			db.session.commit()
+			try:
+				db.session.add(settings)
+				db.session.commit()
+			except Exception as e:
+				db.session.rollback()
+				# If commit fails, return the settings object anyway (it exists in memory)
+				print(f"⚠️ Warning: Could not save default email settings to database: {e}")
 		return settings
 	
 	@staticmethod
@@ -786,7 +791,27 @@ class EmailSettings(db.Model):
 	@staticmethod
 	def is_configured():
 		"""Check if email is properly configured"""
-		settings = EmailSettings.get_settings()
-		return settings.enabled and settings.sender_email and settings.get_current_password()
+		try:
+			settings = EmailSettings.get_settings()
+			if not settings:
+				return False
+			
+			# Check all required fields
+			has_email = bool(settings.sender_email and settings.sender_email.strip())
+			has_password = bool(settings.get_current_password() and settings.get_current_password().strip())
+			is_enabled = bool(settings.enabled)
+			
+			# Debug output
+			if not is_enabled:
+				print(f"⚠️ Email is disabled in settings")
+			if not has_email:
+				print(f"⚠️ Sender email is missing or empty")
+			if not has_password:
+				print(f"⚠️ Email password is missing or empty")
+			
+			return is_enabled and has_email and has_password
+		except Exception as e:
+			print(f"❌ Error checking email configuration: {e}")
+			return False
 
 

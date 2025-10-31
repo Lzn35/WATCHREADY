@@ -6,6 +6,7 @@ Supports Gmail and Outlook SMTP for actual email sending.
 import logging
 import smtplib
 import socket
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -47,7 +48,7 @@ class EmailService:
     """Email service for appointment notifications"""
     
     @staticmethod
-    def send_email(to_email: str, subject: str, body: str, from_name: str = None, from_email: str = None) -> bool:
+    def _send_email_sync(to_email: str, subject: str, body: str, from_name: str = None, from_email: str = None) -> bool:
         """
         Send an email using SMTP (Gmail or Outlook)
         
@@ -63,10 +64,22 @@ class EmailService:
         """
         try:
             # Get email settings from database
-            email_settings = EmailSettings.get_settings()
+            try:
+                email_settings = EmailSettings.get_settings()
+            except Exception as e:
+                logger.error(f"Failed to get email settings: {e}")
+                print(f"❌ Error loading email settings: {e}")
+                return False
             
             # Check if email is configured
-            if not email_settings.is_configured():
+            try:
+                is_configured = email_settings.is_configured()
+            except Exception as e:
+                logger.error(f"Failed to check email configuration: {e}")
+                print(f"❌ Error checking email configuration: {e}")
+                return False
+            
+            if not is_configured:
                 logger.warning("Email not configured - email will only be logged to console")
                 print(f"\n{'='*60}")
                 print(f"EMAIL NOT SENT (Email not configured)")
@@ -85,7 +98,25 @@ class EmailService:
             # Use provided email or database email
             sender_email = from_email or email_settings.sender_email
             sender_name = from_name or email_settings.sender_name
-            sender_password = email_settings.get_current_password()
+            
+            # Get password for current provider
+            try:
+                sender_password = email_settings.get_current_password()
+            except Exception as e:
+                logger.error(f"Failed to get email password: {e}")
+                print(f"❌ Error getting email password: {e}")
+                return False
+            
+            # Validate password exists
+            if not sender_password:
+                logger.error("Email password is empty or not configured")
+                print(f"\n{'='*60}")
+                print(f"EMAIL NOT SENT: Password is missing or empty")
+                print(f"Provider: {email_settings.provider}")
+                print(f"Email: {sender_email}")
+                print(f"\nTIP: Make sure you've entered the App Password in Email Configuration")
+                print(f"{'='*60}\n")
+                return False
             
             # Create message
             message = MIMEMultipart()
@@ -96,9 +127,9 @@ class EmailService:
             # Attach body
             message.attach(MIMEText(body, 'plain'))
             
-            # Connect to SMTP server and send
+            # Connect to SMTP server and send (with reduced timeout for faster failure)
             print(f"\n{'='*60}")
-            print(f"SENDING EMAIL via {smtp_config['name']}")
+            print(f"SENDING EMAIL via {smtp_config['name']} (background thread)")
             print(f"Server: {smtp_config['smtp_server']}:{smtp_config['smtp_port']}")
             print(f"From: {sender_name} <{sender_email}>")
             print(f"To: {to_email}")
@@ -106,16 +137,17 @@ class EmailService:
             print(f"Use SSL: {smtp_config.get('use_ssl', False)}")
             print(f"{'='*60}")
             
-            # Use SSL or TLS based on configuration (with timeout to prevent hanging)
+            # Use SSL or TLS based on configuration (with shorter timeout for faster response)
+            # Reduced timeout since it's now in background thread
             if smtp_config.get('use_ssl'):
                 # Use SMTP_SSL for port 465 (with timeout)
-                server = smtplib.SMTP_SSL(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30)
+                server = smtplib.SMTP_SSL(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=15)
                 server.login(sender_email, sender_password)
                 server.send_message(message)
                 server.quit()
             else:
                 # Use regular SMTP with STARTTLS for port 587 (with timeout)
-                with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
+                with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=15) as server:
                     if smtp_config['use_tls']:
                         server.starttls()
                     
@@ -163,6 +195,58 @@ class EmailService:
             logger.error(f"Failed to send email: {e}")
             print(f"\nEMAIL SEND FAILED: {str(e)}")
             print()
+            return False
+    
+    @staticmethod
+    def send_email(to_email: str, subject: str, body: str, from_name: str = None, from_email: str = None) -> bool:
+        """
+        Send an email asynchronously (non-blocking) using threading.
+        Returns immediately - actual sending happens in background thread.
+        
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            body: Email body (plain text)
+            from_name: Sender's display name
+            from_email: Sender's email address (overrides config)
+            
+        Returns:
+            bool: True if email was queued successfully, False otherwise
+        """
+        try:
+            # Check if email is configured first (quick check)
+            email_settings = EmailSettings.get_settings()
+            if not email_settings.is_configured():
+                logger.warning("Email not configured - email will only be logged to console")
+                print(f"\n{'='*60}")
+                print(f"EMAIL NOT SENT (Email not configured)")
+                print(f"{'='*60}")
+                print(f"To: {to_email}")
+                print(f"Subject: {subject}")
+                print(f"Body:\n{body}")
+                print(f"\nTIP: Configure email in Settings > System Settings > Email Configuration")
+                print(f"{'='*60}\n")
+                return False
+            
+            # Send email in background thread (non-blocking)
+            def send_in_background():
+                try:
+                    EmailService._send_email_sync(to_email, subject, body, from_name, from_email)
+                except Exception as e:
+                    logger.error(f"Background email sending error: {e}")
+                    print(f"❌ Background email error: {e}")
+            
+            # Start thread
+            email_thread = threading.Thread(target=send_in_background, daemon=True)
+            email_thread.start()
+            
+            logger.info(f"Email queued for sending to {to_email} (background thread)")
+            print(f"📧 Email queued for sending to {to_email} (processing in background...)")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to queue email: {e}")
+            print(f"\nEMAIL QUEUE FAILED: {str(e)}")
             return False
     
     @staticmethod
