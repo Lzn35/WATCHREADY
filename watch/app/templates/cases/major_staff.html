@@ -681,21 +681,46 @@ $(document).ready(function() {
 			return;
 		}
 
+		// Validate file type
+		const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+		if (!allowedTypes.includes(file.type)) {
+			alert('Please select a valid image file (JPG, PNG) or PDF.');
+			return;
+		}
+
 		// Show progress
 		$('#ocrProgress').show();
 		$('#ocrExtractNowBtn').prop('disabled', true);
 
-		// For now, we'll use a textarea for manual input since OCR libraries need to be integrated
-		// This is a placeholder for the OCR functionality
-		const ocrText = prompt('Please paste the extracted text from the complaint letter:');
+		// Upload file to OCR endpoint for text extraction
+		const formData = new FormData();
+		formData.append('file', file);
 
-		if (ocrText && ocrText.trim()) {
-			// Call our new OCR extraction API
-			$.ajax({
-				url: '{{ url_for("cases.extract_ocr_data") }}',
-				type: 'POST',
-				contentType: 'application/json',
-				data: JSON.stringify({ text: ocrText, entity_type: 'staff' }),
+		$.ajax({
+			url: '{{ url_for("ocr.upload_ocr_form") }}',
+			type: 'POST',
+			data: formData,
+			processData: false,
+			contentType: false,
+			xhrFields: {
+				withCredentials: true
+			},
+			beforeSend: function(xhr) {
+				// Add CSRF token if available
+				const csrfToken = document.querySelector('meta[name="csrf-token"]');
+				if (csrfToken) {
+					xhr.setRequestHeader('X-CSRFToken', csrfToken.content);
+				}
+			},
+			success: function(ocrResponse) {
+				// OCR response contains extracted_text, fields, offense_detected, etc.
+				if (ocrResponse.success && ocrResponse.extracted_text) {
+					// Now call the extraction API with the extracted text
+					$.ajax({
+						url: '{{ url_for("cases.extract_ocr_data") }}',
+						type: 'POST',
+						contentType: 'application/json',
+						data: JSON.stringify({ text: ocrResponse.extracted_text, entity_type: 'staff' }),
 				success: function(response) {
 					$('#ocrProgress').hide();
 					$('#ocrExtractNowBtn').prop('disabled', false);
@@ -742,23 +767,44 @@ $(document).ready(function() {
 							});
 						}
 
-						alert(message);
-						$('#ocrUploadModal').modal('hide');
-					} else {
-						alert('Failed to extract data from the text. Please try again or fill the form manually.');
-					}
-				},
-				error: function(xhr, status, error) {
-					$('#ocrProgress').hide();
-					$('#ocrExtractNowBtn').prop('disabled', false);
-					console.error('OCR extraction error:', xhr.responseText);
-					alert('Error extracting data: ' + (xhr.responseJSON?.error || 'Unknown error'));
+					alert(message);
+					$('#ocrUploadModal').modal('hide');
+				} else {
+					alert('Failed to extract data from the text. Please try again or fill the form manually.');
 				}
-			});
-		} else {
+			},
+			error: function(xhr, status, error) {
+				$('#ocrProgress').hide();
+				$('#ocrExtractNowBtn').prop('disabled', false);
+				console.error('OCR data extraction error:', xhr.responseText);
+				alert('Error extracting data: ' + (xhr.responseJSON?.error || 'Unknown error'));
+			}
+		});
+			} else {
+				// OCR upload succeeded but no text extracted
+				$('#ocrProgress').hide();
+				$('#ocrExtractNowBtn').prop('disabled', false);
+				alert('Failed to extract text from the image. Please ensure the image is clear and readable, or try a different file.');
+			}
+		},
+		error: function(xhr, status, error) {
 			$('#ocrProgress').hide();
 			$('#ocrExtractNowBtn').prop('disabled', false);
+			console.error('OCR upload error:', xhr.responseText);
+			
+			let errorMsg = 'Error uploading file for OCR processing. ';
+			if (xhr.responseJSON) {
+				if (xhr.responseJSON.error_type === 'tesseract_not_installed') {
+					errorMsg += 'Tesseract OCR is not installed. Please contact your system administrator.';
+				} else {
+					errorMsg += xhr.responseJSON.error || 'Unknown error';
+				}
+			} else {
+				errorMsg += 'Please try again or fill the form manually.';
+			}
+			alert(errorMsg);
 		}
+	});
 	});
 });
 
