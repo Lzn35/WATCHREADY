@@ -183,11 +183,17 @@ class EmailService:
             print()
             return False
             
-        except (smtplib.SMTPException, socket.timeout, TimeoutError) as e:
-            logger.error(f"SMTP/Network Error: {e}")
+        except (smtplib.SMTPException, socket.timeout, TimeoutError, OSError, ConnectionError) as e:
+            error_code = getattr(e, 'errno', None)
+            logger.error(f"SMTP/Network Error: {e} (errno: {error_code})")
             print(f"\nEMAIL SEND FAILED: SMTP/Network Error")
             print(f"Error: {str(e)}")
-            print(f"This might be due to network timeout or SMTP server issue.")
+            if error_code == 101:
+                print(f"⚠️ Network is unreachable - Railway container may not have external network access")
+                print(f"   This is normal in some Railway configurations.")
+                print(f"   Email will be queued but may not send until network is available.")
+            else:
+                print(f"This might be due to network timeout or SMTP server issue.")
             print()
             return False
             

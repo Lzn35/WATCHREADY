@@ -226,14 +226,16 @@ class AttendanceChecklist(db.Model):
 	@staticmethod
 	def get_todays_attendance():
 		"""Get all attendance records for today (Philippine timezone)"""
-		from ..utils.timezone import get_ph_today
+		# Use absolute import to avoid relative import issues
+		from app.utils.timezone import get_ph_today
 		today = get_ph_today()
 		return AttendanceChecklist.query.filter_by(date=today).all()
 	
 	@staticmethod
 	def get_professor_attendance_today(professor_name):
 		"""Get attendance record for a specific professor today (Philippine timezone)"""
-		from ..utils.timezone import get_ph_today
+		# Use absolute import to avoid relative import issues
+		from app.utils.timezone import get_ph_today
 		today = get_ph_today()
 		return AttendanceChecklist.query.filter_by(
 			professor_name=professor_name, 
@@ -551,7 +553,8 @@ class Appointment(db.Model, TimestampMixin):
 	@staticmethod
 	def get_appointments_by_email_today(email):
 		"""Get appointments by email for today (for spam protection) - Philippine timezone"""
-		from ..utils.timezone import get_ph_today
+		# Use absolute import to avoid relative import issues
+		from app.utils.timezone import get_ph_today
 		today = get_ph_today()
 		return Appointment.query.filter(
 			Appointment.email == email,
@@ -567,7 +570,8 @@ class Appointment(db.Model, TimestampMixin):
 	@staticmethod
 	def generate_appointment_number():
 		"""Generate daily appointment number (APT-001, APT-002, etc.) - Philippine timezone"""
-		from ..utils.timezone import get_ph_today
+		# Use absolute import to avoid relative import issues
+		from app.utils.timezone import get_ph_today
 		today = get_ph_today()
 		
 		# Count appointments created today
