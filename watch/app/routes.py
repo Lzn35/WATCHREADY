@@ -176,39 +176,47 @@ def update_profile():
 		user.gmail = request.form.get('gmail', '').strip() or None
 		user.outlook = request.form.get('outlook', '').strip() or None
 		
-		# Handle email configuration settings with validation
+		# Handle email configuration settings with validation - ADMIN ONLY
 		from .models import EmailSettings
-		enabled = request.form.get('enabled') == 'true'
-		provider = request.form.get('provider', 'gmail')
-		
-		sender_email = request.form.get('sender_email', '').strip()
-		if sender_email:
-			sender_email_valid, sender_email_error, sender_email = sanitize_and_validate_text(
-				sender_email, validate_email, "Sender Email"
+		# Only allow admin to update system email settings
+		if user.is_admin():
+			enabled = request.form.get('enabled') == 'true'
+			provider = request.form.get('provider', 'gmail')
+			
+			sender_email = request.form.get('sender_email', '').strip()
+			if sender_email:
+				sender_email_valid, sender_email_error, sender_email = sanitize_and_validate_text(
+					sender_email, validate_email, "Sender Email"
+				)
+				if not sender_email_valid:
+					flash(sender_email_error, 'error')
+					return redirect(url_for('core.profile'))
+			
+			sender_name = request.form.get('sender_name', '').strip()
+			if sender_name:
+				sender_name_valid, sender_name_error, sender_name = sanitize_and_validate_text(
+					sender_name, validate_name, "Sender Name"
+				)
+				if not sender_name_valid:
+					flash(sender_name_error, 'error')
+					return redirect(url_for('core.profile'))
+			
+			sender_password = request.form.get('sender_password', '').strip()
+			
+			# Update email settings (admin only)
+			EmailSettings.update_settings(
+				enabled=enabled,
+				provider=provider,
+				sender_email=sender_email,
+				sender_password=sender_password,
+				sender_name=sender_name
 			)
-			if not sender_email_valid:
-				flash(sender_email_error, 'error')
-				return redirect(url_for('core.profile'))
-		
-		sender_name = request.form.get('sender_name', '').strip()
-		if sender_name:
-			sender_name_valid, sender_name_error, sender_name = sanitize_and_validate_text(
-				sender_name, validate_name, "Sender Name"
+		else:
+			# Non-admin users cannot update system email settings
+			# Log if they try (for security monitoring)
+			current_app.logger.warning(
+				f"Non-admin user {user.username} (ID: {user.id}) attempted to update system email settings"
 			)
-			if not sender_name_valid:
-				flash(sender_name_error, 'error')
-				return redirect(url_for('core.profile'))
-		
-		sender_password = request.form.get('sender_password', '').strip()
-		
-		# Update email settings
-		EmailSettings.update_settings(
-			enabled=enabled,
-			provider=provider,
-			sender_email=sender_email,
-			sender_password=sender_password,
-			sender_name=sender_name
-		)
 		
 		# Save changes to database
 		db.session.commit()

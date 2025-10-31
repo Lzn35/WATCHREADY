@@ -95,11 +95,17 @@ class EmailService:
             provider = email_settings.provider
             smtp_config = SMTP_CONFIG.get(provider, SMTP_CONFIG['gmail'])
             
-            # Use provided email or database email
-            sender_email = from_email or email_settings.sender_email
-            sender_name = from_name or email_settings.sender_name
+            # IMPORTANT: SMTP authentication MUST use the configured system email
+            # We use the admin's configured email for SMTP login, not the user's personal email
+            # This is because SMTP password belongs to the system email account
+            smtp_sender_email = email_settings.sender_email  # Always use system email for SMTP
             
-            # Get password for current provider
+            # For display purposes in email body, we can show the user's name/email
+            # But the "From" field must use system email for authentication
+            display_name = from_name or email_settings.sender_name
+            display_email = from_email or email_settings.sender_email  # User's email for display in body only
+            
+            # Get password for current provider (this is the admin's password)
             try:
                 sender_password = email_settings.get_current_password()
             except Exception as e:
@@ -113,14 +119,16 @@ class EmailService:
                 print(f"\n{'='*60}")
                 print(f"EMAIL NOT SENT: Password is missing or empty")
                 print(f"Provider: {email_settings.provider}")
-                print(f"Email: {sender_email}")
+                print(f"Email: {smtp_sender_email}")
                 print(f"\nTIP: Make sure you've entered the App Password in Email Configuration")
                 print(f"{'='*60}\n")
                 return False
             
             # Create message
             message = MIMEMultipart()
-            message['From'] = f"{sender_name} <{sender_email}>"
+            # "From" field uses system email (required for SMTP authentication)
+            # But display name can show the user's name
+            message['From'] = f"{display_name} <{smtp_sender_email}>"
             message['To'] = to_email
             message['Subject'] = subject
             
@@ -131,7 +139,9 @@ class EmailService:
             print(f"\n{'='*60}")
             print(f"SENDING EMAIL via {smtp_config['name']} (background thread)")
             print(f"Server: {smtp_config['smtp_server']}:{smtp_config['smtp_port']}")
-            print(f"From: {sender_name} <{sender_email}>")
+            print(f"From: {display_name} <{smtp_sender_email}>")
+            if from_email and from_email != smtp_sender_email:
+                print(f"Note: User's email ({from_email}) shown in message body, but sent via system email")
             print(f"To: {to_email}")
             print(f"Use TLS: {smtp_config.get('use_tls', False)}")
             print(f"Use SSL: {smtp_config.get('use_ssl', False)}")
@@ -142,7 +152,8 @@ class EmailService:
             if smtp_config.get('use_ssl'):
                 # Use SMTP_SSL for port 465 (with timeout)
                 server = smtplib.SMTP_SSL(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=15)
-                server.login(sender_email, sender_password)
+                # ALWAYS login with system email (admin's email) - not user's personal email
+                server.login(smtp_sender_email, sender_password)
                 server.send_message(message)
                 server.quit()
             else:
@@ -151,14 +162,14 @@ class EmailService:
                     if smtp_config['use_tls']:
                         server.starttls()
                     
-                    # Login
-                    server.login(sender_email, sender_password)
+                    # Login - ALWAYS use system email (admin's email) for SMTP authentication
+                    server.login(smtp_sender_email, sender_password)
                     
                     # Send email
                     server.send_message(message)
             
             print(f"EMAIL SENT SUCCESSFULLY!")
-            print(f"From: {sender_name} <{sender_email}>")
+            print(f"From: {display_name} <{smtp_sender_email}>")
             print(f"To: {to_email}")
             print(f"Subject: {subject}")
             print(f"{'='*60}\n")

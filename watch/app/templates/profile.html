@@ -566,12 +566,17 @@
                         
                         <hr style="margin: 30px 0; border-color: #e9ecef;">
                         
-                        <!-- Email Configuration Section -->
+                        <!-- Email Configuration Section - ADMIN ONLY -->
+                        {% if user.is_admin() %}
                         <div class="email-config-section">
                             <h5 style="color: #28a745; margin-bottom: 20px;">
                                 <i class="fa fa-envelope" style="margin-right: 8px;"></i>
-                                Email Configuration
+                                System Email Configuration
                             </h5>
+                            <div class="alert alert-info" style="margin-bottom: 20px;">
+                                <i class="fa fa-info-circle" style="margin-right: 5px;"></i>
+                                <strong>Admin Only:</strong> Configure system-wide email settings for sending appointment notifications and confirmations.
+                            </div>
                             <p class="text-muted" style="margin-bottom: 25px;">Configure email settings for sending appointment notifications</p>
                             
                             <!-- Email Settings Form (nested within main form) -->
@@ -684,11 +689,22 @@
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <!-- Non-admin users: Show info message -->
+                        <div class="alert alert-info" style="margin: 20px 0;">
+                            <i class="fa fa-info-circle" style="margin-right: 5px;"></i>
+                            <strong>System Email Configuration:</strong> Only administrators can configure system-wide email settings. 
+                            Please contact your system administrator if you need to change email settings.
+                        </div>
+                        {% endif %}
                         
                         <div class="form-group text-right">
+                            {% if user.is_admin() %}
+                            <!-- Admin: Can remove personal email -->
                             <button type="button" class="btn btn-danger" onclick="confirmRemoveEmail()" style="margin-right: 10px;">
-                                <i class="fa fa-trash"></i> Remove Email
+                                <i class="fa fa-trash"></i> Remove Personal Email
                             </button>
+                            {% endif %}
                             <button type="submit" class="btn-save-changes">
                                 <i class="fa fa-save"></i> Save Changes
                             </button>
