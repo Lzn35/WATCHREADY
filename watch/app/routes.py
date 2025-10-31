@@ -146,8 +146,19 @@ def update_profile():
 		else:
 			user.title = None
 		
-		# Email field is now read-only and managed through Email Configuration
-		# Skip email validation as it's controlled by the email settings
+		# Handle personal email (user-specific, not system-wide)
+		user_email = request.form.get('email', '').strip()
+		if user_email:
+			user_email_valid, user_email_error, user_email = sanitize_and_validate_text(
+				user_email, validate_email, "Email Address"
+			)
+			if not user_email_valid:
+				flash(user_email_error, 'error')
+				return redirect(url_for('core.profile'))
+			user.email = user_email
+		else:
+			# Allow clearing email (empty string means no email)
+			user.email = None
 		
 		phone = request.form.get('phone', '').strip()
 		if phone:

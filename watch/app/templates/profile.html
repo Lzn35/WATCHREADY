@@ -538,8 +538,8 @@
                             <div class="form-group">
                                 <label for="email">Email Address</label>
                                 <input type="email" class="form-control" id="email" name="email" 
-                                       value="{{ email_settings.sender_email or '' }}" placeholder="Configure email below to display here" readonly>
-                                <small class="form-text text-muted">This field shows the email address configured in Email Configuration below</small>
+                                       value="{{ user.email or '' }}" placeholder="Enter your email address">
+                                <small class="form-text text-muted">Your personal email address (only affects your account)</small>
                             </div>
                             <div class="form-group">
                                 <label for="phone">Phone Number</label>
@@ -841,7 +841,9 @@ document.getElementById('profileSettingsForm').addEventListener('submit', functi
 // Update contact info display
 function updateContactInfo(user) {
     const contactItems = document.querySelectorAll('.contact-item .contact-text');
-    contactItems[0].textContent = user.email || 'No email set';
+    // Update contact info with user's personal email (not system email)
+    const userPersonalEmail = document.getElementById('email') ? document.getElementById('email').value : '';
+    contactItems[0].textContent = userPersonalEmail || 'No email set';
     contactItems[1].textContent = user.phone || 'No phone set';
     
     // Update profile name and title
@@ -966,28 +968,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Remove Email functionality
+// Remove Email functionality (removes only current user's personal email)
 function confirmRemoveEmail() {
-    // Show confirmation toast with clear warning about system-wide impact
-    showToast('warning', 'SYSTEM-WIDE EMAIL REMOVAL', 'This will remove email configuration for ALL users (Admin & Committee). This action cannot be undone. Are you sure?', function() {
+    // Show confirmation toast - only affects current user
+    showToast('warning', 'Remove Personal Email', 'This will remove your personal email address. This only affects your account, not other users. Are you sure?', function() {
         removeEmailConfiguration();
     });
 }
 
 function removeEmailConfiguration() {
-    // Clear email fields
-    const senderEmailInput = document.getElementById('senderEmail');
-    const senderPasswordInput = document.getElementById('senderPassword');
-    const senderNameInput = document.getElementById('senderName');
-    const emailProviderSelect = document.getElementById('emailProvider');
+    // Clear only the current user's personal email field
+    const personalEmailInput = document.getElementById('email');
     
-    if (senderEmailInput) senderEmailInput.value = '';
-    if (senderPasswordInput) senderPasswordInput.value = '';
-    if (senderNameInput) senderNameInput.value = '';
-    if (emailProviderSelect) emailProviderSelect.value = 'gmail';
+    if (personalEmailInput) {
+        personalEmailInput.value = '';
+    }
     
     // Show success toast
-    showToast('success', 'System Email Configuration Cleared', 'All email settings have been cleared for the entire system. Click "Save Changes" to confirm removal.');
+    showToast('success', 'Personal Email Cleared', 'Your personal email address has been cleared. Click "Save Changes" to confirm removal.');
 }
 
 // Toast notification function

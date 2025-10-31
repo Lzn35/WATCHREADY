@@ -234,13 +234,19 @@ class EmailService:
                 print(f"{'='*60}\n")
                 return False
             
+            # Get Flask app instance for context
+            from flask import current_app
+            app = current_app._get_current_object()
+            
             # Send email in background thread (non-blocking)
             def send_in_background():
-                try:
-                    EmailService._send_email_sync(to_email, subject, body, from_name, from_email)
-                except Exception as e:
-                    logger.error(f"Background email sending error: {e}")
-                    print(f"❌ Background email error: {e}")
+                # Create application context for the background thread
+                with app.app_context():
+                    try:
+                        EmailService._send_email_sync(to_email, subject, body, from_name, from_email)
+                    except Exception as e:
+                        logger.error(f"Background email sending error: {e}")
+                        print(f"❌ Background email error: {e}")
             
             # Start thread
             email_thread = threading.Thread(target=send_in_background, daemon=True)

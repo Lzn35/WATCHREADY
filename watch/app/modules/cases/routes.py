@@ -193,18 +193,9 @@ def add_minor_case(entity_type):
 		db.session.add(case)
 		db.session.commit()
 		
-		# Send notification to admin about new case
+		# Send notification to admin ONLY if discipline committee (user role) creates the case
+		# Admin/discipline officer creating cases should NOT receive notifications (redundant)
 		user = get_current_user()
-		if user and user.username != 'discipline_officer':
-			try:
-				NotificationService.notify_case_action(
-					action='created',
-					case_type='minor',
-					case_id=case.id,
-					action_user_name=user.full_name or user.username
-				)
-			except Exception as e:
-				print(f"Notification error: {e}")
 		
 		# Log activity
 		if user:
@@ -215,15 +206,26 @@ def add_minor_case(entity_type):
 					description=f"Added minor case for {entity_type}: {person.full_name}"
 				)
 				
-				# Send notification to admin if current user is discipline committee
+				# Only notify admin if current user is discipline committee (user role), NOT if admin creates it
 				if user.role and user.role.name.lower() == 'user':
-					from ...models import Notification
-					Notification.notify_admin_user_action(
-						action_performed="Minor Case Creation",
-						details=f"Added minor case for {entity_type.title()}: {person.full_name} - {offense_type} on {datetime.strptime(date_str, '%Y-%m-%d').strftime('%B %d, %Y')}",
-						notification_type="case_creation",
-						redirect_url=url_for(f'cases.minor_cases_{entity_type}')
-					)
+					try:
+						# Use NotificationService for case notifications
+						NotificationService.notify_case_action(
+							action='created',
+							case_type='minor',
+							case_id=case.id,
+							action_user_name=user.full_name or user.username
+						)
+						# Also create admin notification
+						from ...models import Notification
+						Notification.notify_admin_user_action(
+							action_performed="Minor Case Creation",
+							details=f"Added minor case for {entity_type.title()}: {person.full_name} - {offense_type} on {datetime.strptime(date_str, '%Y-%m-%d').strftime('%B %d, %Y')}",
+							notification_type="case_creation",
+							redirect_url=url_for(f'cases.minor_cases_{entity_type}')
+						)
+					except Exception as e:
+						print(f"Notification error: {e}")
 			except Exception as notification_error:
 				# Log notification error but don't fail the case creation
 				# print(f"DEBUG: Notification error (case still created successfully): {str(notification_error)}")
@@ -464,18 +466,9 @@ def add_major_case(entity_type):
 		
 		db.session.commit()
 		
-		# Send notification to admin about new major case
+		# Send notification to admin ONLY if discipline committee (user role) creates the case
+		# Admin/discipline officer creating cases should NOT receive notifications (redundant)
 		user = get_current_user()
-		if user and user.username != 'discipline_officer':
-			try:
-				NotificationService.notify_case_action(
-					action='created',
-					case_type='major',
-					case_id=case.id,
-					action_user_name=user.full_name or user.username
-				)
-			except Exception as e:
-				print(f"Notification error: {e}")
 		
 		# Log activity
 		if user:
@@ -489,18 +482,29 @@ def add_major_case(entity_type):
 					description=activity_desc
 				)
 				
-				# Send notification to admin if current user is discipline committee
+				# Only notify admin if current user is discipline committee (user role), NOT if admin creates it
 				if user.role and user.role.name.lower() == 'user':
-					from ...models import Notification
-					notification_details = f"Added major case for {entity_type.title()}: {person.full_name} - {category}: {offense} on {datetime.strptime(date_str, '%Y-%m-%d').strftime('%B %d, %Y')}"
-					if attachment_info:
-						notification_details += f" with attachment: {attachment_info['filename']}"
-					Notification.notify_admin_user_action(
-						action_performed="Major Case Creation",
-						details=notification_details,
-						notification_type="case_creation",
-						redirect_url=url_for(f'cases.major_cases_{entity_type}')
-					)
+					try:
+						# Use NotificationService for case notifications
+						NotificationService.notify_case_action(
+							action='created',
+							case_type='major',
+							case_id=case.id,
+							action_user_name=user.full_name or user.username
+						)
+						# Also create admin notification
+						from ...models import Notification
+						notification_details = f"Added major case for {entity_type.title()}: {person.full_name} - {category}: {offense} on {datetime.strptime(date_str, '%Y-%m-%d').strftime('%B %d, %Y')}"
+						if attachment_info:
+							notification_details += f" with attachment: {attachment_info['filename']}"
+						Notification.notify_admin_user_action(
+							action_performed="Major Case Creation",
+							details=notification_details,
+							notification_type="case_creation",
+							redirect_url=url_for(f'cases.major_cases_{entity_type}')
+						)
+					except Exception as e:
+						print(f"Notification error: {e}")
 			except Exception as notification_error:
 				# Log notification error but don't fail the case creation
 				# print(f"DEBUG: Notification error (case still created successfully): {str(notification_error)}")
@@ -1043,7 +1047,7 @@ def add_case_api(person_id):
 		db.session.add(case)
 		db.session.commit()
 		
-		# Log activity
+		# Log activity and send notification ONLY if discipline committee creates the case
 		user = get_current_user()
 		if user:
 			ActivityLog.log_activity(
@@ -1051,6 +1055,25 @@ def add_case_api(person_id):
 				action=f"{case_type.title()} Case Added",
 				description=f"Added {case_type} case for {person.full_name}"
 			)
+			
+			# Only notify admin if current user is discipline committee (user role), NOT if admin creates it
+			if user.role and user.role.name.lower() == 'user':
+				try:
+					NotificationService.notify_case_action(
+						action='created',
+						case_type=case_type,
+						case_id=case.id,
+						action_user_name=user.full_name or user.username
+					)
+					from ...models import Notification
+					Notification.notify_admin_user_action(
+						action_performed=f"{case_type.title()} Case Creation",
+						details=f"Added {case_type} case for {person.full_name} on {case.date_reported.strftime('%B %d, %Y')}",
+						notification_type="case_creation",
+						redirect_url=url_for(f'cases.minor_cases_student' if case_type == 'minor' else 'cases.major_cases_student')
+					)
+				except Exception as e:
+					print(f"Notification error: {e}")
 		
 		return jsonify({
 			'success': True,
