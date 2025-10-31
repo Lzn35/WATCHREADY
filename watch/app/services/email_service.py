@@ -5,6 +5,7 @@ Supports Gmail and Outlook SMTP for actual email sending.
 
 import logging
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -105,16 +106,16 @@ class EmailService:
             print(f"Use SSL: {smtp_config.get('use_ssl', False)}")
             print(f"{'='*60}")
             
-            # Use SSL or TLS based on configuration
+            # Use SSL or TLS based on configuration (with timeout to prevent hanging)
             if smtp_config.get('use_ssl'):
-                # Use SMTP_SSL for port 465
-                server = smtplib.SMTP_SSL(smtp_config['smtp_server'], smtp_config['smtp_port'])
+                # Use SMTP_SSL for port 465 (with timeout)
+                server = smtplib.SMTP_SSL(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30)
                 server.login(sender_email, sender_password)
                 server.send_message(message)
                 server.quit()
             else:
-                # Use regular SMTP with STARTTLS for port 587
-                with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port']) as server:
+                # Use regular SMTP with STARTTLS for port 587 (with timeout)
+                with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
                     if smtp_config['use_tls']:
                         server.starttls()
                     
@@ -150,10 +151,11 @@ class EmailService:
             print()
             return False
             
-        except smtplib.SMTPException as e:
-            logger.error(f"SMTP Error: {e}")
-            print(f"\nEMAIL SEND FAILED: SMTP Error")
+        except (smtplib.SMTPException, socket.timeout, TimeoutError) as e:
+            logger.error(f"SMTP/Network Error: {e}")
+            print(f"\nEMAIL SEND FAILED: SMTP/Network Error")
             print(f"Error: {str(e)}")
+            print(f"This might be due to network timeout or SMTP server issue.")
             print()
             return False
             

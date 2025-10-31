@@ -24,17 +24,34 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 @login_required
 def list_checklists():
 	"""Attendance Checklist - Check and mark faculty attendance"""
-	# Get today's date and weekday in Philippine timezone (not server timezone)
-	today = get_ph_today()  # Uses Philippine timezone (UTC+8)
-	today_weekday = get_ph_weekday()  # Get weekday name based on Philippine time
+	try:
+		# Get today's date and weekday in Philippine timezone (not server timezone)
+		today = get_ph_today()  # Uses Philippine timezone (UTC+8)
+		today_weekday = get_ph_weekday()  # Get weekday name based on Philippine time
+	except Exception as e:
+		# Fallback to regular date if timezone conversion fails
+		print(f"⚠️ Timezone error, using server date: {e}")
+		import traceback
+		traceback.print_exc()
+		from datetime import date
+		today = date.today()
+		weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+		today_weekday = weekday_names[today.weekday()]
 	
-	# Fetch all schedules for today's weekday, sorted by start_time
-	schedules_query = Schedule.query.filter(
-		Schedule.day_of_week == today_weekday
-	).order_by(Schedule.start_time.asc()).all()
-	
-	# Get today's attendance records
-	todays_attendance = {record.professor_name: record.status for record in AttendanceChecklist.get_todays_attendance()}
+	try:
+		# Fetch all schedules for today's weekday, sorted by start_time
+		schedules_query = Schedule.query.filter(
+			Schedule.day_of_week == today_weekday
+		).order_by(Schedule.start_time.asc()).all()
+		
+		# Get today's attendance records
+		todays_attendance = {record.professor_name: record.status for record in AttendanceChecklist.get_todays_attendance()}
+	except Exception as e:
+		print(f"❌ Error fetching schedules/attendance: {e}")
+		import traceback
+		traceback.print_exc()
+		schedules_query = []
+		todays_attendance = {}
 	
 	# Convert schedules to the format expected by the template
 	schedules = []

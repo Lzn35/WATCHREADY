@@ -266,7 +266,12 @@ def confirm_appointment(appointment_id):
 		
 		# Update status to scheduled
 		appointment.status = 'Scheduled'
-		db.session.commit()
+		try:
+			db.session.commit()
+		except Exception as e:
+			db.session.rollback()
+			print(f"❌ Error updating appointment status: {e}")
+			raise  # Re-raise to be caught by outer exception handler
 		
 		# Send notification about appointment confirmation
 		user = get_current_user()
@@ -299,25 +304,45 @@ def confirm_appointment(appointment_id):
 			except Exception as e:
 				print(f"❌ Notification error: {e}")
 		
-		# Send confirmation email with sender information
-		EmailService.send_appointment_confirmation(appointment, sender_user=current_user)
+		# Send confirmation email with sender information (non-blocking, wrapped in try-except)
+		try:
+			EmailService.send_appointment_confirmation(appointment, sender_user=current_user)
+		except Exception as e:
+			print(f"❌ Email sending error (non-critical): {e}")
+			traceback.print_exc()
+			# Don't fail the request if email fails - appointment is already confirmed
 		
 		# Delete related notifications
-		deleted_count = Notification.delete_by_reference('appointment', appointment_id)
-		# print(f"DEBUG: Deleted {deleted_count} notifications for appointment {appointment_id}")
+		try:
+			deleted_count = Notification.delete_by_reference('appointment', appointment_id)
+		except Exception as e:
+			print(f"⚠️ Error deleting notifications: {e}")
+			# Continue even if notification deletion fails
 		
 		# Send notification to admin if current user is discipline committee
-		if current_user and current_user.role and current_user.role.name.lower() == 'user':
-			Notification.notify_admin_user_action(
-				action_performed="Appointment Confirmation",
-				details=f"Confirmed appointment for {appointment.full_name} scheduled on {appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')}",
-				notification_type="appointment_management",
-				redirect_url=url_for('complaints.list_appointments')
-			)
+		try:
+			if current_user and current_user.role and current_user.role.name.lower() == 'user':
+				Notification.notify_admin_user_action(
+					action_performed="Appointment Confirmation",
+					details=f"Confirmed appointment for {appointment.full_name} scheduled on {appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')}",
+					notification_type="appointment_management",
+					redirect_url=url_for('complaints.list_appointments')
+				)
+		except Exception as e:
+			print(f"⚠️ Error sending admin notification: {e}")
+			# Continue even if admin notification fails
+		
+		# Commit any pending changes
+		try:
+			db.session.commit()
+		except Exception as e:
+			print(f"⚠️ Error committing session: {e}")
+			db.session.rollback()
 		
 		return jsonify({
 			'message': 'Appointment confirmed successfully',
-			'status': appointment.status
+			'status': appointment.status,
+			'appointment_id': appointment.id
 		}), 200
 		
 	except Exception as e:
@@ -339,33 +364,53 @@ def reschedule_appointment(appointment_id):
 		# Get custom message from request (if provided)
 		custom_message = request.json.get('custom_message', '') if request.is_json else request.form.get('custom_message', '')
 		
-		# Update status to cancelled (for rescheduling)
-		appointment.status = 'Cancelled'
+		# Update status to Rescheduled
+		appointment.status = 'Rescheduled'
 		db.session.commit()
 		
-		# Send reschedule email notification with sender information and custom message
-		EmailService.send_appointment_reschedule(
-			appointment, 
-			sender_user=current_user,
-			custom_message=custom_message
-		)
+		# Send reschedule email notification with sender information and custom message (non-blocking)
+		try:
+			EmailService.send_appointment_reschedule(
+				appointment, 
+				sender_user=current_user,
+				custom_message=custom_message
+			)
+		except Exception as e:
+			print(f"❌ Email sending error (non-critical): {e}")
+			traceback.print_exc()
+			# Don't fail the request if email fails - appointment is already rescheduled
 		
 		# Delete related notifications
-		deleted_count = Notification.delete_by_reference('appointment', appointment_id)
-		# print(f"DEBUG: Deleted {deleted_count} notifications for appointment {appointment_id}")
+		try:
+			deleted_count = Notification.delete_by_reference('appointment', appointment_id)
+		except Exception as e:
+			print(f"⚠️ Error deleting notifications: {e}")
+			# Continue even if notification deletion fails
 		
 		# Send notification to admin if current user is discipline committee
-		if current_user and current_user.role and current_user.role.name.lower() == 'user':
-			Notification.notify_admin_user_action(
-				action_performed="Appointment Rescheduling",
-				details=f"Rescheduled appointment for {appointment.full_name} originally scheduled on {appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')}",
-				notification_type="appointment_management",
-				redirect_url=url_for('complaints.list_appointments')
-			)
+		try:
+			if current_user and current_user.role and current_user.role.name.lower() == 'user':
+				Notification.notify_admin_user_action(
+					action_performed="Appointment Rescheduling",
+					details=f"Rescheduled appointment for {appointment.full_name} originally scheduled on {appointment.appointment_date.strftime('%B %d, %Y at %I:%M %p')}",
+					notification_type="appointment_management",
+					redirect_url=url_for('complaints.list_appointments')
+				)
+		except Exception as e:
+			print(f"⚠️ Error sending admin notification: {e}")
+			# Continue even if admin notification fails
+		
+		# Commit any pending changes
+		try:
+			db.session.commit()
+		except Exception as e:
+			print(f"⚠️ Error committing session: {e}")
+			db.session.rollback()
 		
 		return jsonify({
 			'message': 'Appointment marked for rescheduling and email notification sent',
-			'status': appointment.status
+			'status': appointment.status,
+			'appointment_id': appointment.id
 		}), 200
 		
 	except Exception as e:

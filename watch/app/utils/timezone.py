@@ -20,11 +20,16 @@ except ImportError:
         PH_TIMEZONE = None
 
 def get_ph_now():
-    """Get current datetime in Philippine timezone"""
+    """Get current datetime in Philippine timezone (returns naive datetime)"""
     if PH_TIMEZONE is not None:
         try:
-            return datetime.now(PH_TIMEZONE)
-        except:
+            ph_datetime = datetime.now(PH_TIMEZONE)
+            # Convert to naive datetime (remove timezone info) for database compatibility
+            return datetime(ph_datetime.year, ph_datetime.month, ph_datetime.day,
+                          ph_datetime.hour, ph_datetime.minute, ph_datetime.second,
+                          ph_datetime.microsecond)
+        except Exception as e:
+            # Log error but continue to fallback
             pass
     
     # Fallback: add 8 hours to UTC (Philippines is UTC+8)
@@ -43,8 +48,14 @@ def get_ph_now():
         return datetime.now()
 
 def get_ph_today():
-    """Get today's date in Philippine timezone"""
-    return get_ph_now().date()
+    """Get today's date in Philippine timezone (returns date object)"""
+    try:
+        ph_datetime = get_ph_now()
+        return ph_datetime.date()
+    except Exception as e:
+        # Fallback to regular date.today() if anything goes wrong
+        from datetime import date
+        return date.today()
 
 def get_ph_weekday():
     """Get today's weekday name in Philippine timezone (e.g., 'Monday', 'Friday')"""
@@ -54,12 +65,27 @@ def get_ph_weekday():
 
 def convert_to_ph_time(dt):
     """Convert a datetime to Philippine timezone"""
+    if PH_TIMEZONE is None:
+        # If no timezone available, return as-is
+        return dt
     if dt.tzinfo is None:
         # If no timezone info, assume it's already in PH time
-        return dt.replace(tzinfo=PH_TIMEZONE)
-    return dt.astimezone(PH_TIMEZONE)
+        try:
+            return dt.replace(tzinfo=PH_TIMEZONE)
+        except:
+            return dt
+    try:
+        return dt.astimezone(PH_TIMEZONE)
+    except:
+        return dt
 
 def get_ph_datetime(year, month, day, hour=0, minute=0, second=0):
     """Create a datetime in Philippine timezone"""
-    return datetime(year, month, day, hour, minute, second, tzinfo=PH_TIMEZONE)
+    if PH_TIMEZONE is not None:
+        try:
+            return datetime(year, month, day, hour, minute, second, tzinfo=PH_TIMEZONE)
+        except:
+            pass
+    # Fallback to naive datetime
+    return datetime(year, month, day, hour, minute, second)
 
