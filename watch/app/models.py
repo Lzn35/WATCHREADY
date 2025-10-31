@@ -740,8 +740,8 @@ class EmailSettings(db.Model):
 	def __repr__(self):
 		return f'<EmailSettings {self.id}: {self.provider} - {self.sender_email}>'
 	
-@staticmethod
-def get_settings():
+	@staticmethod
+	def get_settings():
 		"""Get email settings (creates default if doesn't exist)"""
 		settings = EmailSettings.query.first()
 		if not settings:
