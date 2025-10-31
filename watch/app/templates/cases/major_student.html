@@ -694,63 +694,12 @@ $(document).ready(function() {
 						if (data.description) {
 							$('#description').val(data.description);
 						}
-						if (data.date) {
+						if (data.date && window.parseDate) {
 							// Try to parse and format date for date input (YYYY-MM-DD)
-							const parsedDate = parseDate(data.date);
+							const parsedDate = window.parseDate(data.date);
 							if (parsedDate) {
 								$('#date').val(parsedDate);
 							}
-						}
-						
-						// Helper function to parse various date formats to YYYY-MM-DD
-						function parseDate(dateStr) {
-							if (!dateStr) return null;
-							
-							// Try ISO format first (2025-10-07 or 2025/10/07)
-							const isoMatch = dateStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-							if (isoMatch) {
-								const year = isoMatch[1];
-								const month = isoMatch[2].padStart(2, '0');
-								const day = isoMatch[3].padStart(2, '0');
-								return `${year}-${month}-${day}`;
-							}
-							
-							// Try US format (10/7/2025 or 10-7-2025)
-							const usMatch = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
-							if (usMatch) {
-								const month = usMatch[1].padStart(2, '0');
-								const day = usMatch[2].padStart(2, '0');
-								const year = usMatch[3];
-								return `${year}-${month}-${day}`;
-							}
-							
-							// Try full month name (October 7, 2025 or Oct 7, 2025)
-							const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-								'july', 'august', 'september', 'october', 'november', 'december'];
-							const monthAbbr = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
-								'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-							
-							const textMatch = dateStr.match(/([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/i);
-							if (textMatch) {
-								const monthName = textMatch[1].toLowerCase();
-								const monthIndex = monthNames.indexOf(monthName);
-								if (monthIndex === -1) {
-									const abbrIndex = monthAbbr.indexOf(monthName);
-									if (abbrIndex !== -1) {
-										const month = (abbrIndex + 1).toString().padStart(2, '0');
-										const day = textMatch[2].padStart(2, '0');
-										const year = textMatch[3];
-										return `${year}-${month}-${day}`;
-									}
-								} else {
-									const month = (monthIndex + 1).toString().padStart(2, '0');
-									const day = textMatch[2].padStart(2, '0');
-									const year = textMatch[3];
-									return `${year}-${month}-${day}`;
-								}
-							}
-							
-							return null;
 						}
 						
 						// Show extraction results
@@ -792,25 +741,225 @@ $(document).ready(function() {
 					alert('Failed to extract text from the image. Please ensure the image is clear and readable, or try a different file.');
 				}
 			},
-			error: function(xhr, status, error) {
-				$('#ocrProgress').hide();
-				$('#ocrExtractNowBtn').prop('disabled', false);
-				console.error('OCR upload error:', xhr.responseText);
-				
-				let errorMsg = 'Error uploading file for OCR processing. ';
-				if (xhr.responseJSON) {
-					if (xhr.responseJSON.error_type === 'tesseract_not_installed') {
-						errorMsg += 'Tesseract OCR is not installed. Please contact your system administrator.';
+				error: function(xhr, status, error) {
+					$('#ocrProgress').hide();
+					$('#ocrExtractNowBtn').prop('disabled', false);
+					console.error('OCR upload error:', xhr.responseText);
+					
+					let errorMsg = 'Error uploading file for OCR processing. ';
+					
+					if (xhr.responseJSON) {
+						if (xhr.responseJSON.error_type === 'tesseract_not_installed') {
+							// Show fallback option: manual text entry
+							const useManualEntry = confirm(
+								'Tesseract OCR is not installed on the server.\n\n' +
+								'Would you like to paste the text manually instead?\n\n' +
+								'(Click OK to enter text manually, Cancel to close)'
+							);
+							
+							if (useManualEntry) {
+								// Show modal for manual text entry
+								showManualTextEntryModal('student');
+								return; // Don't show error alert
+							} else {
+								errorMsg += 'Tesseract OCR is not installed. Please contact your system administrator.';
+							}
+						} else {
+							errorMsg += xhr.responseJSON.error || 'Unknown error';
+						}
 					} else {
-						errorMsg += xhr.responseJSON.error || 'Unknown error';
+						errorMsg += 'Please try again or fill the form manually.';
 					}
-				} else {
-					errorMsg += 'Please try again or fill the form manually.';
+					
+					if (errorMsg) {
+						alert(errorMsg);
+					}
 				}
-				alert(errorMsg);
-			}
 		});
 	});
+	
+	// Helper function to parse various date formats to YYYY-MM-DD (defined globally for reuse)
+	window.parseDate = window.parseDate || function(dateStr) {
+		if (!dateStr) return null;
+		
+		// Try ISO format first (2025-10-07 or 2025/10/07)
+		const isoMatch = dateStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+		if (isoMatch) {
+			const year = isoMatch[1];
+			const month = isoMatch[2].padStart(2, '0');
+			const day = isoMatch[3].padStart(2, '0');
+			return `${year}-${month}-${day}`;
+		}
+		
+		// Try US format (10/7/2025 or 10-7-2025)
+		const usMatch = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+		if (usMatch) {
+			const month = usMatch[1].padStart(2, '0');
+			const day = usMatch[2].padStart(2, '0');
+			const year = usMatch[3];
+			return `${year}-${month}-${day}`;
+		}
+		
+		// Try full month name (October 7, 2025 or Oct 7, 2025)
+		const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+			'july', 'august', 'september', 'october', 'november', 'december'];
+		const monthAbbr = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+			'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+		
+		const textMatch = dateStr.match(/([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/i);
+		if (textMatch) {
+			const monthName = textMatch[1].toLowerCase();
+			const monthIndex = monthNames.indexOf(monthName);
+			if (monthIndex === -1) {
+				const abbrIndex = monthAbbr.indexOf(monthName);
+				if (abbrIndex !== -1) {
+					const month = (abbrIndex + 1).toString().padStart(2, '0');
+					const day = textMatch[2].padStart(2, '0');
+					const year = textMatch[3];
+					return `${year}-${month}-${day}`;
+				}
+			} else {
+				const month = (monthIndex + 1).toString().padStart(2, '0');
+				const day = textMatch[2].padStart(2, '0');
+				const year = textMatch[3];
+				return `${year}-${month}-${day}`;
+			}
+		}
+		
+		return null;
+	};
+	
+	// Function to show manual text entry modal (fallback when Tesseract is not installed)
+	function showManualTextEntryModal(entityType) {
+		entityType = entityType || 'student';
+		
+		const modalHtml = `
+			<div class="modal fade" id="manualTextModal" tabindex="-1" role="dialog">
+				<div class="modal-dialog modal-lg" role="document">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title"><i class="fa fa-keyboard"></i> Enter Complaint Letter Text Manually</h5>
+							<button type="button" class="close" data-dismiss="modal">
+								<span>&times;</span>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p class="text-muted mb-3">
+								<i class="fa fa-info-circle"></i>
+								Paste the text from your complaint letter below. The system will automatically extract the information.
+							</p>
+							<div class="form-group">
+								<label for="manualTextInput">Complaint Letter Text:</label>
+								<textarea class="form-control" id="manualTextInput" rows="15" 
+									placeholder="Paste the complaint letter text here...&#10;&#10;Example:&#10;Last Name: DE LA CRUZ&#10;First Name: Juan Miguel&#10;Program: BSIT&#10;Section: 3A&#10;Date: November 5, 2025&#10;Description: The student was caught cheating during the exam..."></textarea>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+							<button type="button" class="btn btn-primary" id="extractManualTextBtn">
+								<i class="fa fa-magic"></i> Extract Information
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+		
+		// Remove existing modal if any
+		$('#manualTextModal').remove();
+		
+		// Add modal to body
+		$('body').append(modalHtml);
+		
+		// Show modal
+		$('#manualTextModal').modal('show');
+		
+		// Handle extract button click
+		$('#extractManualTextBtn').off('click').on('click', function() {
+			const text = $('#manualTextInput').val().trim();
+			
+			if (!text) {
+				alert('Please enter the complaint letter text.');
+				return;
+			}
+			
+			// Show progress
+			const $btn = $('#extractManualTextBtn');
+			$btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Extracting...');
+			
+			// Call the manual text extraction endpoint
+			$.ajax({
+				url: '{{ url_for("ocr.extract_from_text") }}',
+				type: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify({ text: text }),
+				beforeSend: function(xhr) {
+					const csrfToken = document.querySelector('meta[name="csrf-token"]');
+					if (csrfToken) {
+						xhr.setRequestHeader('X-CSRFToken', csrfToken.content);
+					}
+				},
+				success: function(response) {
+					if (response.success) {
+						// Now call the extraction API to parse fields
+						$.ajax({
+							url: '{{ url_for("cases.extract_ocr_data") }}',
+							type: 'POST',
+							contentType: 'application/json',
+							data: JSON.stringify({ text: text, entity_type: entityType }),
+							beforeSend: function(xhr) {
+								const csrfToken = document.querySelector('meta[name="csrf-token"]');
+								if (csrfToken) {
+									xhr.setRequestHeader('X-CSRFToken', csrfToken.content);
+								}
+							},
+							success: function(extractResponse) {
+								$('#manualTextModal').modal('hide');
+								$btn.prop('disabled', false).html('<i class="fa fa-magic"></i> Extract Information');
+								
+								if (extractResponse.success) {
+									const data = extractResponse.data;
+									
+									// Fill form fields (same as OCR extraction)
+									if (data.first_name) $('#first_name').val(data.first_name);
+									if (data.last_name) $('#last_name').val(data.last_name);
+									if (data.program) $('#program').val(data.program);
+									if (data.section) $('#section').val(data.section);
+									if (data.category) {
+										$('#category').val(data.category);
+										$('#category').trigger('change');
+									}
+									if (data.specific_offense) $('#offense').val(data.specific_offense);
+									if (data.description) $('#description').val(data.description);
+									if (data.date && window.parseDate) {
+										const parsedDate = window.parseDate(data.date);
+										if (parsedDate) $('#date').val(parsedDate);
+									}
+									
+									alert('Information extracted successfully from manual text!');
+								} else {
+									alert('Failed to extract information. Please try again or fill the form manually.');
+								}
+							},
+							error: function() {
+								$('#manualTextModal').modal('hide');
+								$btn.prop('disabled', false).html('<i class="fa fa-magic"></i> Extract Information');
+								alert('Failed to extract information. Please try again or fill the form manually.');
+							}
+						});
+					} else {
+						$btn.prop('disabled', false).html('<i class="fa fa-magic"></i> Extract Information');
+						alert('Failed to process text: ' + (response.error || 'Unknown error'));
+					}
+				},
+				error: function(xhr) {
+					$btn.prop('disabled', false).html('<i class="fa fa-magic"></i> Extract Information');
+					const errorMsg = xhr.responseJSON?.error || 'Failed to process text. Please try again.';
+					alert(errorMsg);
+				}
+			});
+		});
+	}
 	
 	// Notification function
 	function showNotification(type, title, message) {
