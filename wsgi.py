@@ -33,6 +33,18 @@ def _select_config():
 # Create the application instance
 app = create_app(_select_config())
 
+# Add error handler to log errors to stdout (for Railway logs)
+@app.errorhandler(500)
+def handle_500_error(e):
+    import traceback
+    error_traceback = traceback.format_exc()
+    print("="*60)
+    print("🚨 500 ERROR OCCURRED:")
+    print(error_traceback)
+    print("="*60)
+    # Call the original error handler
+    return app.handle_exception(e)
+
 # Initialize database on first run (for Railway deployment)
 print("=== DATABASE INITIALIZATION START ===")
 try:
