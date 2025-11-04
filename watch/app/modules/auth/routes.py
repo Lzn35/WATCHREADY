@@ -16,13 +16,16 @@ def login():
 @bp.post('/login')
 @limiter.limit('5 per 5 minutes')
 def login_post():
+	"""
+	Unified login with automatic role detection
+	Panel Recommendation: No need for separate role buttons
+	"""
 	# If user is already logged in, redirect to dashboard
 	if is_authenticated():
 		return redirect(url_for('core.dashboard'))
 	
 	username = request.form.get('username', '').strip()
 	password = request.form.get('password', '')
-	selected_role = request.form.get('role', 'discipline_officer')  # Get selected role
 	
 	# Validate input
 	if not username or not password:
@@ -33,41 +36,32 @@ def login_post():
 	user = User.authenticate(username, password)
 	
 	if user:
-		# Validate role selection
-		user_role_name = user.role.name.lower() if user.role else ''
-		selected_role_mapping = {
-			'discipline_officer': 'admin',
-			'discipline_committee': 'user'
-		}
-		
-		expected_role = selected_role_mapping.get(selected_role, 'admin')
-		
-		if user_role_name != expected_role:
-			flash(f'Invalid role selection. Please select the correct role for your account.', 'error')
-			return render_template("login.html")
-		
 		# Check if user is active
 		if not user.is_active:
 			flash('Your account has been deactivated. Please contact the administrator.', 'error')
 			return render_template("login.html")
 		
-		# Login successful
+		# Login successful - role is automatically detected from user.role
 		# Check if "Remember Me" checkbox was checked
 		remember = request.form.get('remember', '').lower() in ('on', 'true', '1', 'yes')
 		# Default: remember=False means session expires when browser/tab closes
 		login_user(user, remember=remember)
 		
+		# Determine user role display name
+		role_display = 'Administrator' if user.is_admin() else 'Discipline Committee'
+		
 		# Log the login activity
 		from ...models import AuditLog
 		AuditLog.log_activity(
 			action_type='Login',
-			description=f'User {username} logged in successfully as {user.role.name}',
+			description=f'User {username} logged in successfully as {user.role.name} ({role_display})',
 			user_id=user.id,
 			ip_address=request.remote_addr,
 			user_agent=request.headers.get('User-Agent')
 		)
 		
-		flash(f'Welcome back, {user.username}!', 'success')
+		# Welcome message with role indication
+		flash(f'Welcome back, {user.full_name or user.username} ({role_display})!', 'success')
 		
 		# Redirect to the page they were trying to access, or dashboard
 		next_url = session.pop('next_url', None)

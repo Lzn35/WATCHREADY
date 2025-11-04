@@ -3,27 +3,37 @@
 from functools import wraps
 from flask import session, redirect, url_for, request, g, flash
 from .models import User
+from .middleware.session_timeout import check_session_timeout
 
 
 def login_required(f):
-    """Decorator to require authentication for routes"""
+    """Decorator to require authentication for routes with session timeout check"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             # Save the page they were trying to access
             session['next_url'] = request.url
             return redirect(url_for('auth.login'))
+        
+        # Check session timeout
+        if check_session_timeout():
+            return redirect(url_for('auth.login'))
+        
         return f(*args, **kwargs)
     return decorated_function
 
 
 def admin_required(f):
-    """Decorator to require admin role for routes"""
+    """Decorator to require admin role for routes with session timeout check"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             # Not logged in
             session['next_url'] = request.url
+            return redirect(url_for('auth.login'))
+        
+        # Check session timeout
+        if check_session_timeout():
             return redirect(url_for('auth.login'))
         
         # Get current user
@@ -81,8 +91,14 @@ def login_user(user, remember=False):
         remember: If True, session persists across browser restarts. 
                   If False (default), session expires when browser/tab closes.
     """
+    from datetime import datetime
+    
     session['user_id'] = user.id
     session['username'] = user.username
+    
+    # Initialize last activity timestamp for session timeout tracking
+    session['last_activity'] = datetime.utcnow().isoformat()
+    
     # Only make session permanent if "Remember Me" is checked
     # Default: session expires when browser/tab closes
     session.permanent = remember

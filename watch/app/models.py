@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from .extensions import db
 
@@ -68,6 +68,73 @@ class User(db.Model, TimestampMixin):
 		return f'<User {self.username}>'
 
 
+class Room(db.Model):
+	"""Reference table for rooms/classrooms - Panel Recommendation"""
+	__tablename__ = "rooms"
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	room_code = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "RM-101", "LAB-A"
+	room_name = db.Column(db.String(100), nullable=False)  # e.g., "Computer Lab A"
+	building = db.Column(db.String(100), nullable=True)  # e.g., "Main Building"
+	floor = db.Column(db.String(20), nullable=True)  # e.g., "2nd Floor"
+	capacity = db.Column(db.Integer, nullable=True)  # Max students
+	is_active = db.Column(db.Boolean, default=True, nullable=False)
+	created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+	
+	def __repr__(self):
+		return f'<Room {self.room_code}: {self.room_name}>'
+	
+	@staticmethod
+	def get_active_rooms():
+		"""Get all active rooms for dropdown"""
+		return Room.query.filter_by(is_active=True).order_by(Room.room_code).all()
+	
+	def get_display_name(self):
+		"""Get formatted display name for room"""
+		return f"{self.room_code} - {self.room_name}"
+
+
+class Section(db.Model):
+	"""Reference table for sections - Panel Recommendation"""
+	__tablename__ = "sections"
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	section_code = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "BSIT-3A"
+	program = db.Column(db.String(100), nullable=False)  # e.g., "BSIT"
+	year_level = db.Column(db.String(20), nullable=False)  # e.g., "3rd Year"
+	section_name = db.Column(db.String(50), nullable=False)  # e.g., "A", "B"
+	academic_year = db.Column(db.String(20), nullable=False)  # e.g., "2024-2025"
+	is_active = db.Column(db.Boolean, default=True, nullable=False)
+	is_graduated = db.Column(db.Boolean, default=False, nullable=False)  # For purging graduated students
+	graduation_date = db.Column(db.Date, nullable=True)  # Track when they graduated
+	created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+	
+	def __repr__(self):
+		return f'<Section {self.section_code}>'
+	
+	@staticmethod
+	def get_active_sections():
+		"""Get all active (non-graduated) sections for dropdown"""
+		return Section.query.filter_by(is_active=True, is_graduated=False).order_by(Section.section_code).all()
+	
+	@staticmethod
+	def mark_as_graduated(section_id, graduation_date=None):
+		"""Mark a section as graduated for purging"""
+		section = Section.query.get(section_id)
+		if section:
+			section.is_graduated = True
+			section.graduation_date = graduation_date or date.today()
+			db.session.commit()
+			return True
+		return False
+	
+	@staticmethod
+	def get_graduated_sections(academic_year=None):
+		"""Get graduated sections, optionally filtered by academic year"""
+		query = Section.query.filter_by(is_graduated=True)
+		if academic_year:
+			query = query.filter_by(academic_year=academic_year)
+		return query.order_by(Section.graduation_date.desc()).all()
+
+
 class Schedule(db.Model):
 	__tablename__ = "schedules"
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -76,10 +143,22 @@ class Schedule(db.Model):
 	day_of_week = db.Column(db.String(20), nullable=False)  # Monday, Tuesday, etc.
 	start_time = db.Column(db.Time, nullable=False)
 	end_time = db.Column(db.Time, nullable=False)
-	room = db.Column(db.String(100), nullable=True)  # Optional
+	
+	# Room reference (Panel Recommendation) - Foreign key to Room table
+	room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=True)
+	room_ref = db.relationship('Room', lazy=True)
+	
+	# Keep old room field for backward compatibility (deprecated - will be phased out)
+	room = db.Column(db.String(100), nullable=True)
 	
 	def __repr__(self):
 		return f'<Schedule {self.id}: {self.professor_name} - {self.subject} ({self.day_of_week} {self.start_time}-{self.end_time})>'
+	
+	def get_room_display(self):
+		"""Get room display name (uses Room reference if available, falls back to text field)"""
+		if self.room_ref:
+			return self.room_ref.get_display_name()
+		return self.room or 'TBA'
 	
 	@staticmethod
 	def check_time_overlap(professor_name, day_of_week, start_time, end_time, exclude_id=None):
@@ -217,8 +296,13 @@ class AttendanceChecklist(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	professor_name = db.Column(db.String(255), nullable=False)  # Store professor name directly
 	status = db.Column(db.Enum('Present', 'Absent', 'Late', name='attendance_status'), nullable=False)
-	date = db.Column(db.Date, default=date.today, nullable=False)
+	date = db.Column(db.Date, nullable=False)  # Removed default to force explicit date setting
 	created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+	
+	# Add unique constraint: one attendance record per professor per day
+	__table_args__ = (
+		db.UniqueConstraint('professor_name', 'date', name='unique_professor_date'),
+	)
 	
 	def __repr__(self):
 		return f'<AttendanceChecklist {self.id}: Professor {self.professor_name} - {self.status} on {self.date}>'
@@ -228,19 +312,51 @@ class AttendanceChecklist(db.Model):
 		"""Get all attendance records for today (Philippine timezone)"""
 		# Use absolute import to avoid relative import issues
 		from app.utils.timezone import get_ph_today
-		today = get_ph_today()
-		return AttendanceChecklist.query.filter_by(date=today).all()
+		try:
+			today = get_ph_today()
+			print(f"📅 [AttendanceChecklist] Getting today's attendance for date: {today}")
+			records = AttendanceChecklist.query.filter_by(date=today).all()
+			print(f"✅ [AttendanceChecklist] Found {len(records)} attendance record(s) for {today}")
+			return records
+		except Exception as e:
+			print(f"❌ [AttendanceChecklist] Error getting today's attendance: {e}")
+			import traceback
+			traceback.print_exc()
+			# Fallback to server date
+			from datetime import date
+			today = date.today()
+			print(f"⚠️ [AttendanceChecklist] Using fallback date: {today}")
+			return AttendanceChecklist.query.filter_by(date=today).all()
 	
 	@staticmethod
 	def get_professor_attendance_today(professor_name):
 		"""Get attendance record for a specific professor today (Philippine timezone)"""
 		# Use absolute import to avoid relative import issues
 		from app.utils.timezone import get_ph_today
-		today = get_ph_today()
-		return AttendanceChecklist.query.filter_by(
-			professor_name=professor_name, 
-			date=today
-		).first()
+		try:
+			today = get_ph_today()
+			print(f"📅 [AttendanceChecklist] Getting attendance for {professor_name} on date: {today}")
+			record = AttendanceChecklist.query.filter_by(
+				professor_name=professor_name, 
+				date=today
+			).first()
+			if record:
+				print(f"✅ [AttendanceChecklist] Found record: {record.status} for {professor_name} on {today}")
+			else:
+				print(f"⚠️ [AttendanceChecklist] No record found for {professor_name} on {today}")
+			return record
+		except Exception as e:
+			print(f"❌ [AttendanceChecklist] Error getting professor attendance: {e}")
+			import traceback
+			traceback.print_exc()
+			# Fallback to server date
+			from datetime import date
+			today = date.today()
+			print(f"⚠️ [AttendanceChecklist] Using fallback date: {today}")
+			return AttendanceChecklist.query.filter_by(
+				professor_name=professor_name,
+				date=today
+			).first()
 
 
 class AttendanceHistory(db.Model):
@@ -277,6 +393,22 @@ class AttendanceHistory(db.Model):
 
 
 class MinorCase(db.Model, TimestampMixin):
+	"""
+	⚠️ LEGACY MODEL - DEPRECATED - For backward compatibility only
+	
+	This model is NO LONGER USED in active application code.
+	The system now uses the unified Case model with case_type='minor'.
+	
+	Database table 'minor_cases' exists but is NOT actively written to.
+	Routes have been refactored to use the Person + Case tables instead.
+	
+	This model is kept ONLY for:
+	- Database backward compatibility
+	- Historical data access (if any legacy data exists)
+	- Preventing import errors in old code
+	
+	Future: Table can be dropped in a future database migration after confirming no legacy data exists.
+	"""
 	__tablename__ = "minor_cases"
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	entity_type = db.Column(db.Enum('student', 'faculty', 'staff', name='entity_type'), nullable=False)
@@ -318,6 +450,22 @@ class MinorCase(db.Model, TimestampMixin):
 
 
 class MajorCase(db.Model, TimestampMixin):
+	"""
+	⚠️ LEGACY MODEL - DEPRECATED - For backward compatibility only
+	
+	This model is NO LONGER USED in active application code.
+	The system now uses the unified Case model with case_type='major'.
+	
+	Database table 'major_cases' exists but is NOT actively written to.
+	Routes have been refactored to use the Person + Case tables instead.
+	
+	This model is kept ONLY for:
+	- Database backward compatibility
+	- Historical data access (if any legacy data exists)
+	- Preventing import errors in old code
+	
+	Future: Table can be dropped in a future database migration after confirming no legacy data exists.
+	"""
 	__tablename__ = "major_cases"
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	entity_type = db.Column(db.Enum('student', 'faculty', 'staff', name='entity_type'), nullable=False)
@@ -371,9 +519,20 @@ class Person(db.Model, TimestampMixin):
 	full_name = db.Column(db.String(255), nullable=False)
 	first_name = db.Column(db.String(100), nullable=True)  # Added for editing
 	last_name = db.Column(db.String(100), nullable=True)   # Added for editing
-	role = db.Column(db.Enum('student', 'faculty', 'staff', name='person_role'), nullable=False)
+	role = db.Column(db.Enum('student', 'faculty', 'staff', name='person_role'), nullable=False, index=True)
 	program_or_dept = db.Column(db.String(100), nullable=True)  # Program for students, Department for faculty/staff
-	section = db.Column(db.String(50), nullable=True)  # Only for students
+	
+	# Section reference (Panel Recommendation) - Foreign key to Section table (for students)
+	section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), nullable=True)
+	section_ref = db.relationship('Section', lazy=True)
+	
+	# Keep old section field for backward compatibility (deprecated - will be phased out)
+	section = db.Column(db.String(50), nullable=True)
+	
+	# Soft delete fields - For data recovery and audit
+	is_deleted = db.Column(db.Boolean, default=False, nullable=False, index=True)
+	deleted_at = db.Column(db.DateTime, nullable=True)
+	deleted_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 	
 	def __repr__(self):
 		return f'<Person {self.id}: {self.full_name} - {self.role}>'
@@ -409,22 +568,57 @@ class Person(db.Model, TimestampMixin):
 		elif last_name:
 			self.full_name = last_name
 	
+	def get_section_display(self):
+		"""Get section display (uses Section reference if available, falls back to text field)"""
+		if self.section_ref:
+			return self.section_ref.section_code
+		return self.section or 'N/A'
+	
+	def is_graduated(self):
+		"""Check if student's section has graduated (for purging)"""
+		if self.role == 'student' and self.section_ref:
+			return self.section_ref.is_graduated
+		return False
+	
+	def soft_delete(self, deleted_by_user_id=None):
+		"""Soft delete this person and all their cases"""
+		self.is_deleted = True
+		self.deleted_at = datetime.utcnow()
+		self.deleted_by_id = deleted_by_user_id
+		# Also soft delete all their cases
+		for case in Case.query.filter_by(person_id=self.id, is_deleted=False).all():
+			case.soft_delete(deleted_by_user_id)
+		db.session.commit()
+	
+	def restore(self):
+		"""Restore a soft-deleted person and optionally their cases"""
+		self.is_deleted = False
+		self.deleted_at = None
+		self.deleted_by_id = None
+		db.session.commit()
+	
 	@staticmethod
-	def get_persons_with_case_counts(role_filter=None):
-		"""Get all persons with their minor and major case counts, optionally filtered by role"""
+	def get_persons_with_case_counts(role_filter=None, include_deleted=False):
+		"""Get all persons with their minor and major case counts, optionally filtered by role - excludes deleted by default"""
 		from sqlalchemy import func
 		
-		# Get persons with minor case counts
+		# Get persons with minor case counts (exclude deleted cases)
 		minor_counts = db.session.query(
 			Case.person_id,
 			func.count(Case.id).label('minor_count')
-		).filter(Case.case_type == 'minor').group_by(Case.person_id).subquery()
+		).filter(
+			Case.case_type == 'minor',
+			Case.is_deleted == False
+		).group_by(Case.person_id).subquery()
 		
-		# Get persons with major case counts
+		# Get persons with major case counts (exclude deleted cases)
 		major_counts = db.session.query(
 			Case.person_id,
 			func.count(Case.id).label('major_count')
-		).filter(Case.case_type == 'major').group_by(Case.person_id).subquery()
+		).filter(
+			Case.case_type == 'major',
+			Case.is_deleted == False
+		).group_by(Case.person_id).subquery()
 		
 		# Join persons with case counts
 		query = db.session.query(
@@ -433,6 +627,10 @@ class Person(db.Model, TimestampMixin):
 			func.coalesce(major_counts.c.major_count, 0).label('major_count')
 		).outerjoin(minor_counts, Person.id == minor_counts.c.person_id)\
 		 .outerjoin(major_counts, Person.id == major_counts.c.person_id)
+		
+		# Filter out deleted persons by default
+		if not include_deleted:
+			query = query.filter(Person.is_deleted == False)
 		
 		# Apply role filter if provided
 		if role_filter:
@@ -443,8 +641,8 @@ class Person(db.Model, TimestampMixin):
 		return persons
 	
 	@staticmethod
-	def search_persons(search_term, role=None):
-		"""Search persons by name, program/dept, or section"""
+	def search_persons(search_term, role=None, include_deleted=False):
+		"""Search persons by name, program/dept, or section - excludes deleted by default"""
 		query = Person.query.filter(
 			db.or_(
 				Person.full_name.ilike(f'%{search_term}%'),
@@ -452,20 +650,30 @@ class Person(db.Model, TimestampMixin):
 				Person.section.ilike(f'%{search_term}%')
 			)
 		)
+		if not include_deleted:
+			query = query.filter(Person.is_deleted == False)
 		if role:
 			query = query.filter(Person.role == role)
 		return query.order_by(Person.full_name).all()
+	
+	@staticmethod
+	def get_deleted_persons(days_ago=60):
+		"""Get soft-deleted persons for archive view"""
+		return Person.query.filter(
+			Person.is_deleted == True,
+			Person.deleted_at.isnot(None)
+		).order_by(Person.deleted_at.desc()).all()
 
 
 class Case(db.Model, TimestampMixin):
 	__tablename__ = "cases"
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	person_id = db.Column(db.Integer, db.ForeignKey('persons.id', ondelete='CASCADE'), nullable=False)
-	case_type = db.Column(db.Enum('minor', 'major', name='case_type'), nullable=False)
+	person_id = db.Column(db.Integer, db.ForeignKey('persons.id', ondelete='CASCADE'), nullable=False, index=True)
+	case_type = db.Column(db.Enum('minor', 'major', name='case_type'), nullable=False, index=True)
 	offense_category = db.Column(db.String(100), nullable=True)  # Category of offense (for major cases)
 	offense_type = db.Column(db.String(100), nullable=True)  # Type of offense (for minor/major cases)
 	description = db.Column(db.Text, nullable=True)
-	date_reported = db.Column(db.Date, nullable=False, default=date.today)
+	date_reported = db.Column(db.Date, nullable=False, default=date.today, index=True)
 	status = db.Column(db.String(50), nullable=False, default='open')  # open, closed, resolved, etc.
 	remarks = db.Column(db.Text, nullable=True)
 	# Attachment fields for major cases only - Database BLOB storage
@@ -475,21 +683,46 @@ class Case(db.Model, TimestampMixin):
 	attachment_type = db.Column(db.String(100), nullable=True)  # MIME type
 	attachment_hash = db.Column(db.String(64), nullable=True)  # File hash for integrity
 	
-	# Relationship to person
+	# Soft delete fields - Panel recommendation for data recovery
+	is_deleted = db.Column(db.Boolean, default=False, nullable=False, index=True)
+	deleted_at = db.Column(db.DateTime, nullable=True)
+	deleted_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+	
+	# Relationships
 	person = db.relationship('Person', lazy=True)
+	deleted_by = db.relationship('User', foreign_keys=[deleted_by_id], lazy=True)
 	
 	def __repr__(self):
 		return f'<Case {self.id}: {self.person.full_name if self.person else "Unknown"} - {self.case_type}>'
 	
-	@staticmethod
-	def get_cases_by_person(person_id):
-		"""Get all cases for a specific person"""
-		return Case.query.filter_by(person_id=person_id).order_by(Case.date_reported.desc()).all()
+	def soft_delete(self, deleted_by_user_id=None):
+		"""Soft delete this case - can be restored within 60 days"""
+		self.is_deleted = True
+		self.deleted_at = datetime.utcnow()
+		self.deleted_by_id = deleted_by_user_id
+		db.session.commit()
+	
+	def restore(self):
+		"""Restore a soft-deleted case"""
+		self.is_deleted = False
+		self.deleted_at = None
+		self.deleted_by_id = None
+		db.session.commit()
 	
 	@staticmethod
-	def get_recent_cases(case_type=None, limit=None):
-		"""Get recent cases ordered by created_at DESC (LIFO)"""
+	def get_cases_by_person(person_id, include_deleted=False):
+		"""Get all cases for a specific person (excludes deleted by default)"""
+		query = Case.query.filter_by(person_id=person_id)
+		if not include_deleted:
+			query = query.filter_by(is_deleted=False)
+		return query.order_by(Case.date_reported.desc()).all()
+	
+	@staticmethod
+	def get_recent_cases(case_type=None, limit=None, include_deleted=False):
+		"""Get recent cases ordered by created_at DESC (LIFO) - excludes deleted by default"""
 		query = Case.query
+		if not include_deleted:
+			query = query.filter(Case.is_deleted == False)
 		if case_type:
 			query = query.filter(Case.case_type == case_type)
 		query = query.order_by(Case.created_at.desc())
@@ -498,8 +731,8 @@ class Case(db.Model, TimestampMixin):
 		return query.all()
 	
 	@staticmethod
-	def search_cases(search_term, case_type=None):
-		"""Search cases by person name, description, or remarks"""
+	def search_cases(search_term, case_type=None, include_deleted=False):
+		"""Search cases by person name, description, or remarks - excludes deleted by default"""
 		query = Case.query.join(Person).filter(
 			db.or_(
 				Person.full_name.ilike(f'%{search_term}%'),
@@ -507,9 +740,28 @@ class Case(db.Model, TimestampMixin):
 				Case.remarks.ilike(f'%{search_term}%')
 			)
 		)
+		if not include_deleted:
+			query = query.filter(Case.is_deleted == False)
 		if case_type:
 			query = query.filter(Case.case_type == case_type)
 		return query.order_by(Case.created_at.desc()).all()
+	
+	@staticmethod
+	def get_deleted_cases(days_ago=60):
+		"""Get soft-deleted cases for archive view"""
+		return Case.query.filter(
+			Case.is_deleted == True,
+			Case.deleted_at.isnot(None)
+		).order_by(Case.deleted_at.desc()).all()
+	
+	@staticmethod
+	def get_cases_for_purge(days_old=60):
+		"""Get cases deleted more than X days ago for permanent deletion"""
+		cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+		return Case.query.filter(
+			Case.is_deleted == True,
+			Case.deleted_at < cutoff_date
+		).all()
 
 
 class Appointment(db.Model, TimestampMixin):

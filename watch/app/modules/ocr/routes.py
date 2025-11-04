@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from ...utils.uploads import save_upload
+from ...utils.file_upload import save_upload
 from ...auth_utils import login_required
 from .ocr_utils import (
     extract_text_from_file, 

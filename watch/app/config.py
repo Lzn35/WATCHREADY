@@ -101,11 +101,13 @@ class Config:
     )
     
     # Session Security - Auto logout when browser/tab closes or after inactivity
+    # Panel Recommendation: 5-10 minutes idle timeout
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() in ("1", "true", "yes")
-    PERMANENT_SESSION_LIFETIME = 300  # 5 minutes idle timeout - automatic logout after inactivity
-    SESSION_PERMANENT = False  # Session expires when browser closes
+    PERMANENT_SESSION_LIFETIME = 600  # 10 minutes (600 seconds) - matches SESSION_TIMEOUT_MINUTES in middleware
+    SESSION_PERMANENT = False  # Session expires when browser closes (unless "Remember Me" is checked)
+    # Note: Actual timeout is enforced by middleware/session_timeout.py
     # Note: SESSION_COOKIE_SECURE should be True in actual production under HTTPS
     
     # Template Auto-Reload (False in production for performance)

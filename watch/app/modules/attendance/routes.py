@@ -73,7 +73,18 @@ def list_checklists():
 		print(f"📊 Schedules by day: {weekday_counts}")
 		
 		# Get today's attendance records
-		todays_attendance = {record.professor_name: record.status for record in AttendanceChecklist.get_todays_attendance()}
+		try:
+			print(f"📋 [LIST_CHECKLISTS] Fetching today's attendance records...")
+			todays_records = AttendanceChecklist.get_todays_attendance()
+			todays_attendance = {record.professor_name: record.status for record in todays_records}
+			print(f"✅ [LIST_CHECKLISTS] Loaded {len(todays_attendance)} attendance record(s)")
+			for prof, status in todays_attendance.items():
+				print(f"   - {prof}: {status}")
+		except Exception as e:
+			print(f"❌ [LIST_CHECKLISTS] Error fetching attendance: {e}")
+			import traceback
+			traceback.print_exc()
+			todays_attendance = {}
 	except Exception as e:
 		print(f"❌ Error fetching schedules/attendance: {e}")
 		import traceback
@@ -757,19 +768,35 @@ def update_attendance():
 		professor_name = request.form.get('professor_name')
 		status = request.form.get('status')
 		
+		print(f"\n{'='*60}")
+		print(f"📝 [UPDATE_ATTENDANCE] Starting attendance update")
+		print(f"{'='*60}")
+		print(f"Professor: {professor_name}")
+		print(f"Status: {status}")
+		
 		# Validation
 		if not professor_name or not status:
+			print(f"❌ [UPDATE_ATTENDANCE] Missing required fields")
 			return jsonify({'success': False, 'message': 'Missing required fields'}), 400
 		
 		# Validate status
 		valid_statuses = ['Present', 'Absent', 'Late']
 		if status not in valid_statuses:
+			print(f"❌ [UPDATE_ATTENDANCE] Invalid status: {status}")
 			return jsonify({'success': False, 'message': 'Invalid status'}), 400
 		
 		# Use Philippine timezone for today's date
-		today = get_ph_today()
+		try:
+			today = get_ph_today()
+			print(f"📅 [UPDATE_ATTENDANCE] Using Philippine timezone date: {today}")
+		except Exception as e:
+			print(f"⚠️ [UPDATE_ATTENDANCE] Error getting PH date, using fallback: {e}")
+			from datetime import date
+			today = date.today()
+			print(f"📅 [UPDATE_ATTENDANCE] Using fallback date: {today}")
 		
-		# Update or insert attendance checklist for today
+		# Check for existing record using the same date logic
+		print(f"🔍 [UPDATE_ATTENDANCE] Checking for existing record: professor={professor_name}, date={today}")
 		existing_checklist = AttendanceChecklist.query.filter_by(
 			professor_name=professor_name,
 			date=today
@@ -777,18 +804,31 @@ def update_attendance():
 		
 		if existing_checklist:
 			# Update existing record
+			print(f"✅ [UPDATE_ATTENDANCE] Found existing record (ID: {existing_checklist.id}), updating...")
+			print(f"   Old status: {existing_checklist.status}")
 			existing_checklist.status = status
-			existing_checklist.created_at = get_ph_now()  # Use Philippine timezone
+			try:
+				existing_checklist.created_at = get_ph_now()  # Use Philippine timezone
+			except:
+				from datetime import datetime
+				existing_checklist.created_at = datetime.now()
+			print(f"   New status: {existing_checklist.status}")
+			print(f"   Updated timestamp: {existing_checklist.created_at}")
 		else:
 			# Create new record
+			print(f"✨ [UPDATE_ATTENDANCE] Creating new attendance record...")
 			new_checklist = AttendanceChecklist(
 				professor_name=professor_name,
 				status=status,
-				date=today
+				date=today  # Explicitly set date (no default)
 			)
 			db.session.add(new_checklist)
+			print(f"   Professor: {new_checklist.professor_name}")
+			print(f"   Status: {new_checklist.status}")
+			print(f"   Date: {new_checklist.date}")
 		
 		# Always add to history (for audit trail)
+		print(f"📚 [UPDATE_ATTENDANCE] Adding to attendance history...")
 		new_history = AttendanceHistory(
 			professor_name=professor_name,
 			status=status,
@@ -796,33 +836,71 @@ def update_attendance():
 		)
 		db.session.add(new_history)
 		
-		# Commit changes
-		db.session.commit()
+		# Commit changes with error handling
+		try:
+			db.session.commit()
+			print(f"✅ [UPDATE_ATTENDANCE] Database commit successful!")
+			
+			# Verify the record was saved
+			verify_record = AttendanceChecklist.query.filter_by(
+				professor_name=professor_name,
+				date=today
+			).first()
+			
+			if verify_record:
+				print(f"✅ [UPDATE_ATTENDANCE] Verification successful! Record ID: {verify_record.id}, Status: {verify_record.status}")
+			else:
+				print(f"⚠️ [UPDATE_ATTENDANCE] WARNING: Record not found after commit!")
+				
+		except Exception as commit_error:
+			print(f"❌ [UPDATE_ATTENDANCE] Database commit failed: {commit_error}")
+			import traceback
+			traceback.print_exc()
+			db.session.rollback()
+			raise commit_error
 		
 		# Log activity
-		AuditLog.log_activity(
-			action_type='Updated',
-			description=f'Updated attendance for {professor_name} to {status} on {today}'
-		)
+		try:
+			AuditLog.log_activity(
+				action_type='Updated',
+				description=f'Updated attendance for {professor_name} to {status} on {today}'
+			)
+			print(f"📋 [UPDATE_ATTENDANCE] Activity logged")
+		except Exception as log_error:
+			print(f"⚠️ [UPDATE_ATTENDANCE] Error logging activity: {log_error}")
 		
 		# Send notification to admin if current user is discipline committee
-		from ...models import User, Notification
-		current_user = User.query.get(session.get('user_id'))
-		if current_user and current_user.role and current_user.role.name.lower() == 'user':
-			# Discipline committee performed action - notify admin
-			Notification.notify_admin_user_action(
-				action_performed="Attendance Update",
-				details=f"Marked {professor_name} as {status} on {today.strftime('%B %d, %Y')}",
-				notification_type="attendance",
-				redirect_url=url_for('attendance.list_checklists')
-			)
+		try:
+			from ...models import User, Notification
+			current_user = User.query.get(session.get('user_id'))
+			if current_user and current_user.role and current_user.role.name.lower() == 'user':
+				# Discipline committee performed action - notify admin
+				Notification.notify_admin_user_action(
+					action_performed="Attendance Update",
+					details=f"Marked {professor_name} as {status} on {today.strftime('%B %d, %Y')}",
+					notification_type="attendance",
+					redirect_url=url_for('attendance.list_checklists')
+				)
+				print(f"📧 [UPDATE_ATTENDANCE] Notification sent")
+		except Exception as notify_error:
+			print(f"⚠️ [UPDATE_ATTENDANCE] Error sending notification: {notify_error}")
+		
+		print(f"{'='*60}")
+		print(f"✅ [UPDATE_ATTENDANCE] Successfully completed!")
+		print(f"{'='*60}\n")
 		
 		return jsonify({
 			'success': True,
-			'message': f'Attendance updated to {status} for {professor_name}'
+			'message': f'Attendance updated to {status} for {professor_name}',
+			'date': str(today),  # Include date in response for debugging
+			'professor': professor_name
 		}), 200
 		
 	except Exception as e:
+		print(f"\n❌ [UPDATE_ATTENDANCE] ERROR: {str(e)}")
+		import traceback
+		traceback.print_exc()
+		print(f"{'='*60}\n")
 		db.session.rollback()
 		return jsonify({
 			'success': False,

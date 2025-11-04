@@ -10,6 +10,7 @@ from ...utils.validation import (
     validate_faculty_department, validate_description, validate_case_date, sanitize_and_validate_text
 )
 from ...services.ocr_service import OCRService
+from ...services.narrative_ocr_service import NarrativeOCRService
 from ...services.notification_service import NotificationService
 from . import bp
 from datetime import datetime, date
@@ -296,12 +297,15 @@ def edit_minor_case(case_id):
 @bp.post('/minor/delete/<int:case_id>')
 @login_required
 def delete_minor_case(case_id):
-	"""Delete a minor case"""
+	"""Soft delete a minor case - can be restored within 60 days"""
 	case = MinorCase.query.get_or_404(case_id)
 	
 	try:
 		case_name = f"{case.first_name} {case.last_name}"
 		entity_type = case.entity_type
+		
+		# Legacy MinorCase model doesn't have soft delete - use hard delete
+		# (Legacy tables are kept for backward compatibility only)
 		db.session.delete(case)
 		db.session.commit()
 		
@@ -604,17 +608,19 @@ def edit_major_case(case_id):
 @bp.post('/major/delete/<int:case_id>')
 @login_required
 def delete_major_case(case_id):
-	"""Delete a major case"""
+	"""Soft delete a major case - can be restored within 60 days"""
 	case = MajorCase.query.get_or_404(case_id)
 	
 	try:
 		case_name = f"{case.first_name} {case.last_name}"
 		entity_type = case.entity_type
 		
+		# Legacy MajorCase model doesn't have soft delete - use hard delete
 		# Clear attachment data from database (no file deletion needed)
 		from ...utils.file_upload import clear_case_attachment
 		clear_case_attachment(case)
 		
+		# (Legacy tables are kept for backward compatibility only)
 		db.session.delete(case)
 		db.session.commit()
 		
@@ -844,20 +850,22 @@ def major_ocr_extract(entity_type):
 @bp.get('/api/persons')
 @login_required
 def get_persons_api():
-	"""API endpoint to get persons with case counts (for AJAX)"""
+	"""API endpoint to get persons with case counts (for AJAX) - excludes deleted persons and cases"""
 	search_term = request.args.get('search', '').strip()
 	role_filter = request.args.get('role', '').strip()
 	
 	if search_term:
+		# search_persons now filters deleted by default
 		persons = Person.search_persons(search_term, role_filter if role_filter else None)
-		# Convert to format with case counts
+		# Convert to format with case counts (exclude deleted cases)
 		persons_with_counts = []
 		for person in persons:
-			minor_count = Case.query.filter_by(person_id=person.id, case_type='minor').count()
-			major_count = Case.query.filter_by(person_id=person.id, case_type='major').count()
+			minor_count = Case.query.filter_by(person_id=person.id, case_type='minor', is_deleted=False).count()
+			major_count = Case.query.filter_by(person_id=person.id, case_type='major', is_deleted=False).count()
 			persons_with_counts.append((person, minor_count, major_count))
 	else:
 		# Apply role filter even when no search term
+		# get_persons_with_case_counts now filters deleted by default
 		if role_filter:
 			persons_with_counts = Person.get_persons_with_case_counts(role_filter=role_filter)
 		else:
@@ -868,12 +876,12 @@ def get_persons_api():
 	for person_data in persons_with_counts:
 		person, minor_count, major_count = person_data
 		
-		# Get latest major case info for date display
-		latest_major_case = Case.query.filter_by(person_id=person.id, case_type='major').order_by(Case.date_reported.desc()).first()
+		# Get latest major case info for date display (exclude deleted)
+		latest_major_case = Case.query.filter_by(person_id=person.id, case_type='major', is_deleted=False).order_by(Case.date_reported.desc()).first()
 		latest_date = latest_major_case.date_reported.strftime('%Y-%m-%d') if latest_major_case else None
 		
-		# Get latest case overall (any type) for attachment info - order by created_at to get truly latest
-		latest_case_overall = Case.query.filter_by(person_id=person.id).order_by(Case.created_at.desc()).first()
+		# Get latest case overall (any type) for attachment info - order by created_at to get truly latest (exclude deleted)
+		latest_case_overall = Case.query.filter_by(person_id=person.id, is_deleted=False).order_by(Case.created_at.desc()).first()
 		has_attachment = latest_case_overall.attachment_filename is not None if latest_case_overall else False
 		attachment_filename = latest_case_overall.attachment_filename if latest_case_overall and latest_case_overall.attachment_filename else None
 		attachment_case_id = latest_case_overall.id if latest_case_overall and latest_case_overall.attachment_filename else None
@@ -1135,25 +1143,28 @@ def edit_case_api(case_id):
 @bp.post('/api/case/<int:case_id>/delete')
 @login_required
 def delete_case_api(case_id):
-	"""API endpoint to delete a case"""
+	"""API endpoint to soft delete a case - can be restored within 60 days"""
 	try:
 		case = Case.query.get_or_404(case_id)
 		person_name = case.person.full_name
 		case_type = case.case_type
 		
-		db.session.delete(case)
-		db.session.commit()
+		# Use soft delete method (sets is_deleted=True, preserves data)
+		user = get_current_user()
+		case.soft_delete(deleted_by_user_id=user.id if user else None)
 		
 		# Log activity
-		user = get_current_user()
 		if user:
 			ActivityLog.log_activity(
 				user_id=user.id,
 				action="Case Deleted",
-				description=f"Deleted {case_type} case for {person_name}"
+				description=f"Soft deleted {case_type} case for {person_name} (can be restored within 60 days)"
 			)
 		
-		return jsonify({'success': True})
+		return jsonify({
+			'success': True,
+			'message': 'Case moved to archive. Can be restored within 60 days.'
+		})
 		
 	except Exception as e:
 		db.session.rollback()
@@ -1322,7 +1333,7 @@ def update_case_api():
 @bp.post('/api/delete-person')
 @login_required
 def delete_person_api():
-	"""API endpoint to delete a person and all their cases"""
+	"""API endpoint to soft delete a person and all their cases - can be restored within 60 days"""
 	try:
 		data = request.form
 		person_id = data.get('person_id')
@@ -1333,29 +1344,93 @@ def delete_person_api():
 		person = Person.query.get_or_404(person_id)
 		person_name = person.full_name
 		
-		# Delete all cases first
-		cases = Case.query.filter_by(person_id=person_id).all()
-		for case in cases:
-			db.session.delete(case)
+		# Use soft delete method (automatically soft deletes all cases too)
+		user = get_current_user()
+		person.soft_delete(deleted_by_user_id=user.id if user else None)
 		
-		# Delete the person
-		db.session.delete(person)
-		db.session.commit()
+		# Log activity
+		if user:
+			ActivityLog.log_activity(
+				user_id=user.id,
+				action="Person Deleted",
+				description=f"Soft deleted {person_name} and all associated cases (can be restored within 60 days)"
+			)
+		
+		return jsonify({
+			'success': True,
+			'message': 'Person and cases moved to archive. Can be restored within 60 days.'
+		})
+		
+	except Exception as e:
+		db.session.rollback()
+		return jsonify({'error': 'Error deleting person'}), 500
+
+
+@bp.post('/api/case/<int:case_id>/restore')
+@login_required
+def restore_case_api(case_id):
+	"""API endpoint to restore a soft-deleted case"""
+	try:
+		case = Case.query.filter_by(id=case_id, is_deleted=True).first_or_404()
+		person_name = case.person.full_name
+		case_type = case.case_type
+		
+		# Restore the case
+		case.restore()
 		
 		# Log activity
 		user = get_current_user()
 		if user:
 			ActivityLog.log_activity(
 				user_id=user.id,
-				action="Person Deleted",
-				description=f"Deleted {person_name} and all associated cases"
+				action="Case Restored",
+				description=f"Restored {case_type} case for {person_name} from archive"
 			)
 		
-		return jsonify({'success': True})
+		return jsonify({
+			'success': True,
+			'message': 'Case restored successfully.'
+		})
 		
 	except Exception as e:
 		db.session.rollback()
-		return jsonify({'error': 'Error deleting person'}), 500
+		return jsonify({'error': 'Error restoring case'}), 500
+
+
+@bp.post('/api/restore-person')
+@login_required
+def restore_person_api():
+	"""API endpoint to restore a soft-deleted person"""
+	try:
+		data = request.form
+		person_id = data.get('person_id')
+		
+		if not person_id:
+			return jsonify({'error': 'Person ID is required'}), 400
+		
+		person = Person.query.filter_by(id=person_id, is_deleted=True).first_or_404()
+		person_name = person.full_name
+		
+		# Restore the person
+		person.restore()
+		
+		# Log activity
+		user = get_current_user()
+		if user:
+			ActivityLog.log_activity(
+				user_id=user.id,
+				action="Person Restored",
+				description=f"Restored {person_name} from archive"
+			)
+		
+		return jsonify({
+			'success': True,
+			'message': 'Person restored successfully. Note: Their cases remain in archive and must be restored separately if needed.'
+		})
+		
+	except Exception as e:
+		db.session.rollback()
+		return jsonify({'error': 'Error restoring person'}), 500
 
 
 @bp.post('/ocr/extract')
@@ -1374,11 +1449,12 @@ def extract_ocr_data():
 		if entity_type not in ['student', 'faculty', 'staff']:
 			entity_type = 'student'
 		
-		# Extract information using OCR service
-		extracted_data = OCRService.extract_all_info(ocr_text, entity_type)
+		# ENHANCED: Use NarrativeOCRService for better extraction from natural language
+		# This is the UNIQUE FEATURE - works with handwritten/narrative complaint letters!
+		extracted_data = NarrativeOCRService.extract_all_from_narrative(ocr_text, entity_type)
 		
-		# Validate extraction
-		is_valid, validation_errors = OCRService.validate_extraction(extracted_data)
+		# Validate extraction and get warnings
+		is_valid, validation_errors = NarrativeOCRService.validate_extraction(extracted_data)
 		
 		# Log activity
 		user = get_current_user()
@@ -1386,7 +1462,7 @@ def extract_ocr_data():
 			ActivityLog.log_activity(
 				user_id=user.id,
 				action="OCR Extraction",
-				description=f"Extracted {entity_type} data from OCR text (confidence: {extracted_data.get('extraction_confidence', 0)})"
+				description=f"Extracted {entity_type} data from narrative OCR text using enhanced NLP-style extraction"
 			)
 		
 		return jsonify({

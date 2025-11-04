@@ -4,7 +4,7 @@ from ...models import Appointment, Notification, User, Role
 from ...extensions import db, limiter
 from ...services.email_service import EmailService
 from ...services.notification_service import NotificationService
-from ...utils.uploads import save_upload
+from ...utils.file_upload import save_upload
 from ...extensions import csrf
 from datetime import datetime
 import json

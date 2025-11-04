@@ -565,12 +565,12 @@
 		{% endif %}
 	</script>
 
-	<!-- Idle Timeout - 5 minutes inactivity auto logout -->
+	<!-- Idle Timeout - 10 minutes inactivity auto logout (Panel Recommendation: 10-15 minutes) -->
 	<script>
 		{% if is_authenticated %}
 		(function() {
-			var idleTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
-			var warningTimeout = 4 * 60 * 1000; // Show warning at 4 minutes (1 minute before logout)
+			var idleTimeout = 10 * 60 * 1000; // 10 minutes in milliseconds (matches server PERMANENT_SESSION_LIFETIME)
+			var warningTimeout = 9 * 60 * 1000; // Show warning at 9 minutes (1 minute before logout)
 			var lastActivity = Date.now();
 			var idleTimer;
 			var warningTimer;
@@ -614,7 +614,7 @@
 						<div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
 							<div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
 							<h3 style="margin: 0 0 15px 0; color: #333;">Session Timeout Warning</h3>
-							<p style="margin: 0 0 20px 0; color: #666;">You have been idle for 4 minutes.</p>
+							<p style="margin: 0 0 20px 0; color: #666;">You have been idle for 9 minutes.</p>
 							<p style="margin: 0 0 20px 0; color: #e74c3c; font-weight: bold; font-size: 18px;">You will be logged out in <span id="idle-countdown">60</span> seconds</p>
 							<button id="stay-logged-in-btn" style="background: #3498db; color: white; border: none; padding: 12px 30px; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">
 								Stay Logged In
@@ -694,7 +694,7 @@
 				if (csrfToken) {
 					formData.append('csrf_token', csrfToken.content);
 				}
-				formData.append('reason', 'idle timeout (5 minutes inactivity)');
+				formData.append('reason', 'idle timeout (10 minutes inactivity)');
 				
 				// Use sendBeacon for logout
 				navigator.sendBeacon('{{ url_for("auth.auto_logout") }}', formData);

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Student Import/Export - WATCH{% endblock %}
+
+{% block content %}
+<div class="main-container">
+	<div class="pd-ltr-20">
+		
+		<!-- Page Header -->
+		<div class="page-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+			<div class="row align-items-center">
+				<div class="col-md-12">
+					<h4 class="mb-0">
+						<i class="fa fa-file-import" style="margin-right: 10px;"></i>
+						Student Data Import/Export
+					</h4>
+					<p class="mb-0" style="margin-top: 8px; opacity: 0.9;">
+						Import student data from exported CSV files - Panel Recommendation
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Alert Info -->
+		<div class="alert alert-info">
+			<i class="fa fa-info-circle" style="margin-right: 8px;"></i>
+			<strong>Panel Recommendation:</strong> Import student data using exported CSV files from your student information system.
+		</div>
+
+		<!-- Export Section -->
+		<div class="card-box mb-30">
+			<div class="pd-20">
+				<h5 class="mb-3">
+					<i class="fa fa-download" style="margin-right: 8px;"></i>
+					Export Student Data
+				</h5>
+				
+				<p class="text-muted">Export current students to CSV file for backup or external use.</p>
+				
+				<div class="row">
+					<div class="col-md-6">
+						<div class="form-group">
+							<label>Filter by Program (Optional)</label>
+							<input type="text" class="form-control" id="exportProgram" placeholder="e.g., BSIT, BSBA">
+						</div>
+					</div>
+					<div class="col-md-6">
+						<div class="form-group">
+							<label>Filter by Section (Optional)</label>
+							<input type="text" class="form-control" id="exportSection" placeholder="e.g., BSIT-3A">
+						</div>
+					</div>
+				</div>
+				
+				<button class="btn btn-primary" onclick="exportStudents()">
+					<i class="fa fa-download"></i> Export Students to CSV
+				</button>
+				
+				<button class="btn btn-secondary" onclick="downloadTemplate()">
+					<i class="fa fa-file-download"></i> Download Import Template
+				</button>
+			</div>
+		</div>
+
+		<!-- Import Section -->
+		<div class="card-box mb-30">
+			<div class="pd-20">
+				<h5 class="mb-3">
+					<i class="fa fa-upload" style="margin-right: 8px;"></i>
+					Import Student Data
+				</h5>
+				
+				<p class="text-muted">Upload a CSV file with student data. Use the template for correct format.</p>
+				
+				<div class="alert alert-warning">
+					<strong>Required CSV Columns:</strong> first_name, last_name, section, program<br>
+					<strong>Optional Columns:</strong> year_level, section_name, academic_year
+				</div>
+				
+				<form id="importForm" enctype="multipart/form-data">
+					<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+					
+					<div class="form-group">
+						<label>Academic Year</label>
+						<input type="text" class="form-control" name="academic_year" id="academicYear" 
+							   placeholder="e.g., 2024-2025" required
+							   value="2024-2025">
+					</div>
+					
+					<div class="form-group">
+						<label>CSV File</label>
+						<div class="custom-file">
+							<input type="file" class="custom-file-input" id="csvFile" accept=".csv" required>
+							<label class="custom-file-label" for="csvFile">Choose file...</label>
+						</div>
+						<small class="form-text text-muted">
+							Maximum file size: 10 MB. Format: CSV with UTF-8 encoding.
+						</small>
+					</div>
+					
+					<div class="custom-control custom-checkbox mb-3">
+						<input type="checkbox" class="custom-control-input" id="createSections" checked>
+						<label class="custom-control-label" for="createSections">
+							Automatically create sections that don't exist
+						</label>
+					</div>
+					
+					<button type="button" class="btn btn-primary" onclick="previewImport()">
+						<i class="fa fa-search"></i> Preview Import
+					</button>
+					
+					<button type="button" class="btn btn-success" id="executeImportBtn" style="display: none;" onclick="executeImport()">
+						<i class="fa fa-check"></i> Execute Import
+					</button>
+				</form>
+				
+				<!-- Import Preview -->
+				<div id="importPreview" style="display: none; margin-top: 20px;">
+					<h6>Import Preview</h6>
+					<div class="table-responsive">
+						<table class="table table-bordered table-sm">
+							<thead>
+								<tr>
+									<th>First Name</th>
+									<th>Last Name</th>
+									<th>Section</th>
+									<th>Program</th>
+									<th>Year Level</th>
+									<th>Status</th>
+								</tr>
+							</thead>
+							<tbody id="previewTableBody">
+							</tbody>
+						</table>
+					</div>
+					<div id="previewSummary" class="alert alert-info"></div>
+				</div>
+				
+				<!-- Import Results -->
+				<div id="importResults" style="display: none; margin-top: 20px;"></div>
+			</div>
+		</div>
+
+		<!-- Import History -->
+		<div class="card-box mb-30">
+			<div class="pd-20">
+				<h5 class="mb-3">
+					<i class="fa fa-history" style="margin-right: 8px;"></i>
+					Recent Imports
+				</h5>
+				
+				<div class="table-responsive">
+					<table class="table table-striped">
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Academic Year</th>
+								<th>Students Imported</th>
+								<th>Errors</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody id="importHistoryTable">
+							<tr>
+								<td colspan="5" class="text-center text-muted">
+									<i class="fa fa-info-circle"></i> Import history will be tracked here.
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+<script>
+// Update file label when file is selected
+document.getElementById('csvFile').addEventListener('change', function(e) {
+	const fileName = e.target.files[0]?.name || 'Choose file...';
+	e.target.nextElementSibling.textContent = fileName;
+});
+
+function downloadTemplate() {
+	window.location.href = '/settings/students/template';
+}
+
+function exportStudents() {
+	const program = document.getElementById('exportProgram').value.trim();
+	const section = document.getElementById('exportSection').value.trim();
+	
+	let url = '/settings/students/export?';
+	if (program) url += `program=${encodeURIComponent(program)}&`;
+	if (section) url += `section=${encodeURIComponent(section)}&`;
+	
+	window.location.href = url;
+}
+
+function previewImport() {
+	const fileInput = document.getElementById('csvFile');
+	const file = fileInput.files[0];
+	
+	if (!file) {
+		alert('Please select a CSV file first.');
+		return;
+	}
+	
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('academic_year', document.getElementById('academicYear').value);
+	formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+	
+	// Show loading
+	const preview = document.getElementById('importPreview');
+	preview.style.display = 'block';
+	preview.innerHTML = '<p class="text-center"><i class="fa fa-spinner fa-spin"></i> Analyzing CSV file...</p>';
+	
+	fetch('/settings/students/preview', {
+		method: 'POST',
+		headers: {
+			'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+		},
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			displayPreview(data);
+			document.getElementById('executeImportBtn').style.display = 'inline-block';
+		} else {
+			preview.innerHTML = `<div class="alert alert-danger">❌ Error: ${data.error}</div>`;
+			document.getElementById('executeImportBtn').style.display = 'none';
+		}
+	})
+	.catch(err => {
+		console.error('Error:', err);
+		preview.innerHTML = '<div class="alert alert-danger">❌ Network error. Please try again.</div>';
+		document.getElementById('executeImportBtn').style.display = 'none';
+	});
+}
+
+function displayPreview(data) {
+	const preview = document.getElementById('importPreview');
+	preview.style.display = 'block';
+	
+	// Show first 10 rows
+	const tbody = document.getElementById('previewTableBody');
+	tbody.innerHTML = '';
+	
+	const rows = data.preview_data.slice(0, 10);
+	rows.forEach(row => {
+		const tr = document.createElement('tr');
+		tr.innerHTML = `
+			<td>${row.first_name}</td>
+			<td>${row.last_name}</td>
+			<td>${row.section}</td>
+			<td>${row.program}</td>
+			<td>${row.year_level || 'N/A'}</td>
+			<td><span class="badge badge-${row.is_duplicate ? 'warning' : 'success'}">${row.is_duplicate ? 'Duplicate' : 'New'}</span></td>
+		`;
+		tbody.appendChild(tr);
+	});
+	
+	// Show summary
+	const summary = document.getElementById('previewSummary');
+	summary.innerHTML = `
+		<strong>Import Summary:</strong><br>
+		Total rows: ${data.total_rows}<br>
+		New students: ${data.new_count}<br>
+		Duplicates (will skip): ${data.duplicate_count}<br>
+		${data.preview_data.length > 10 ? `<br><em>Showing first 10 rows only</em>` : ''}
+	`;
+}
+
+function executeImport() {
+	if (!confirm('Execute import now?\n\nThis will add students to the database.')) {
+		return;
+	}
+	
+	const fileInput = document.getElementById('csvFile');
+	const file = fileInput.files[0];
+	
+	if (!file) {
+		alert('Please select a CSV file first.');
+		return;
+	}
+	
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('academic_year', document.getElementById('academicYear').value);
+	formData.append('create_sections', document.getElementById('createSections').checked ? 'true' : 'false');
+	formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+	
+	// Show loading
+	const btn = document.getElementById('executeImportBtn');
+	const originalText = btn.innerHTML;
+	btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Importing...';
+	btn.disabled = true;
+	
+	const results = document.getElementById('importResults');
+	results.style.display = 'block';
+	results.innerHTML = '<p class="text-center"><i class="fa fa-spinner fa-spin"></i> Importing students...</p>';
+	
+	fetch('/settings/students/import', {
+		method: 'POST',
+		headers: {
+			'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+		},
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		btn.innerHTML = originalText;
+		btn.disabled = false;
+		
+		if (data.success) {
+			results.innerHTML = `
+				<div class="alert alert-success">
+					<h6>✅ Import Successful!</h6>
+					<p>Imported: ${data.imported_count} students<br>
+					Skipped (duplicates): ${data.skipped_count}<br>
+					${data.errors.length > 0 ? `Errors: ${data.errors.length}` : ''}</p>
+					${data.errors.length > 0 ? `<details><summary>View Errors</summary><pre>${data.errors.join('\n')}</pre></details>` : ''}
+				</div>
+			`;
+			
+			// Reset form
+			document.getElementById('importForm').reset();
+			document.getElementById('importPreview').style.display = 'none';
+			document.getElementById('executeImportBtn').style.display = 'none';
+		} else {
+			results.innerHTML = `<div class="alert alert-danger">❌ Error: ${data.error}</div>`;
+		}
+	})
+	.catch(err => {
+		console.error('Error:', err);
+		results.innerHTML = '<div class="alert alert-danger">❌ Network error. Please try again.</div>';
+		btn.innerHTML = originalText;
+		btn.disabled = false;
+	});
+}
+</script>
+
+{% endblock %}
+

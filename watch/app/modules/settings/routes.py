@@ -1,8 +1,11 @@
 from flask import jsonify, render_template, redirect, url_for, request, flash, session
 from ...auth_utils import login_required, admin_required
-from ...models import EmailSettings, SystemSettings, User, Role
+from ...models import EmailSettings, SystemSettings, User, Role, Section, Person, Case
+from ...services.purge_service import PurgeService
+from ...services.student_import_service import StudentImportService
 from ...extensions import db
 from . import bp
+from datetime import datetime, date
 
 
 # Keep the old decorator for backward compatibility, but it now uses admin_required
@@ -834,5 +837,318 @@ def generate_system_logs_report():
 @login_required
 def get_settings_api():
 	return jsonify({"reports": True}), 200
+
+
+# ==================== DATA PURGE MANAGEMENT (Panel Recommendation) ====================
+
+@bp.get('/data-purge')
+@login_required
+@admin_required
+def data_purge_page():
+	"""Data purge management page - Panel recommendation"""
+	# Get all graduated sections
+	graduated_sections = Section.get_graduated_sections()
+	
+	# Get all active sections
+	active_sections = Section.get_active_sections()
+	
+	return render_template('settings/data_purge.html',
+						 graduated_sections=graduated_sections,
+						 active_sections=active_sections)
+
+
+@bp.post('/sections/<int:section_id>/graduate')
+@login_required
+@admin_required
+def mark_section_graduated(section_id):
+	"""Mark a section as graduated"""
+	try:
+		graduation_date_str = request.form.get('graduation_date', '').strip()
+		
+		# Parse graduation date or use today
+		if graduation_date_str:
+			try:
+				graduation_date = datetime.strptime(graduation_date_str, '%Y-%m-%d').date()
+			except ValueError:
+				return jsonify({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+		else:
+			graduation_date = date.today()
+		
+		# Mark section as graduated
+		Section.mark_as_graduated(section_id, graduation_date)
+		
+		section = Section.query.get(section_id)
+		
+		return jsonify({
+			'success': True,
+			'message': f'Section {section.section_code} marked as graduated on {graduation_date.strftime("%B %d, %Y")}'
+		})
+		
+	except Exception as e:
+		db.session.rollback()
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.post('/purge-graduated-students')
+@login_required
+@admin_required
+def purge_graduated_students():
+	"""Purge students from graduated sections with CSV archiving"""
+	try:
+		section_id = request.form.get('section_id')
+		
+		if not section_id:
+			return jsonify({'success': False, 'error': 'Section ID is required'}), 400
+		
+		section = Section.query.get_or_404(section_id)
+		
+		if not section.is_graduated:
+			return jsonify({'success': False, 'error': 'Section is not marked as graduated'}), 400
+		
+		# Execute purge with archiving
+		academic_year = section.academic_year
+		count, message, csv_path = PurgeService.purge_graduated_students(
+			academic_year=academic_year,
+			archive=True
+		)
+		
+		return jsonify({
+			'success': True,
+			'message': message,
+			'count': count,
+			'csv_path': csv_path
+		})
+		
+	except Exception as e:
+		db.session.rollback()
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.get('/api/students/count')
+@login_required
+def get_student_count_by_section():
+	"""Get count of students in a section"""
+	try:
+		section_id = request.args.get('section_id')
+		
+		if not section_id:
+			return jsonify({'count': 0})
+		
+		# Count students in this section (exclude deleted)
+		count = Person.query.filter_by(
+			role='student',
+			section_id=int(section_id),
+			is_deleted=False
+		).count()
+		
+		return jsonify({'count': count})
+		
+	except Exception as e:
+		return jsonify({'count': 0, 'error': str(e)})
+
+
+# ==================== STUDENT IMPORT/EXPORT (Panel Recommendation) ====================
+
+@bp.get('/student-import')
+@login_required
+@admin_required
+def student_import_page():
+	"""Student import/export page - Panel recommendation"""
+	return render_template('settings/student_import.html')
+
+
+@bp.get('/students/template')
+@login_required
+@admin_required
+def download_student_template():
+	"""Download CSV template for student import"""
+	import tempfile
+	import os
+	from flask import send_file
+	
+	try:
+		# Generate template file
+		temp_dir = tempfile.gettempdir()
+		template_path = os.path.join(temp_dir, 'student_import_template.csv')
+		
+		StudentImportService.generate_import_template(template_path)
+		
+		return send_file(
+			template_path,
+			as_attachment=True,
+			download_name='student_import_template.csv',
+			mimetype='text/csv'
+		)
+		
+	except Exception as e:
+		flash(f'Error generating template: {str(e)}', 'error')
+		return redirect(url_for('settings.student_import_page'))
+
+
+@bp.get('/students/export')
+@login_required
+@admin_required
+def export_students():
+	"""Export students to CSV"""
+	import tempfile
+	import os
+	from flask import send_file
+	
+	try:
+		# Get filter parameters
+		program = request.args.get('program', '').strip()
+		section = request.args.get('section', '').strip()
+		
+		filters = {}
+		if program:
+			filters['program'] = program
+		if section:
+			filters['section'] = section
+		
+		# Generate export file
+		temp_dir = tempfile.gettempdir()
+		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+		export_filename = f'students_export_{timestamp}.csv'
+		export_path = os.path.join(temp_dir, export_filename)
+		
+		StudentImportService.export_students_to_csv(export_path, filters=filters if filters else None)
+		
+		return send_file(
+			export_path,
+			as_attachment=True,
+			download_name=export_filename,
+			mimetype='text/csv'
+		)
+		
+	except Exception as e:
+		flash(f'Error exporting students: {str(e)}', 'error')
+		return redirect(url_for('settings.student_import_page'))
+
+
+@bp.post('/students/preview')
+@login_required
+@admin_required
+def preview_student_import():
+	"""Preview student import from CSV"""
+	try:
+		if 'file' not in request.files:
+			return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+		
+		file = request.files['file']
+		if file.filename == '':
+			return jsonify({'success': False, 'error': 'No file selected'}), 400
+		
+		academic_year = request.form.get('academic_year', '2024-2025')
+		
+		# Save file temporarily
+		import tempfile
+		import os
+		temp_dir = tempfile.gettempdir()
+		temp_path = os.path.join(temp_dir, f'preview_{file.filename}')
+		file.save(temp_path)
+		
+		# Validate CSV format
+		is_valid, validation_msg = StudentImportService.validate_csv_format(temp_path)
+		
+		if not is_valid:
+			os.remove(temp_path)
+			return jsonify({'success': False, 'error': validation_msg}), 400
+		
+		# Read and preview data
+		import csv
+		preview_data = []
+		total_rows = 0
+		new_count = 0
+		duplicate_count = 0
+		
+		with open(temp_path, 'r', encoding='utf-8') as f:
+			reader = csv.DictReader(f)
+			for row in reader:
+				total_rows += 1
+				first_name = row.get('first_name', '').strip()
+				last_name = row.get('last_name', '').strip()
+				section = row.get('section', '').strip()
+				program = row.get('program', '').strip()
+				year_level = row.get('year_level', '').strip()
+				
+				# Check if student already exists
+				full_name = f"{first_name} {last_name}"
+				existing = Person.query.filter_by(
+					full_name=full_name,
+					role='student'
+				).first()
+				
+				is_duplicate = existing is not None
+				if is_duplicate:
+					duplicate_count += 1
+				else:
+					new_count += 1
+				
+				preview_data.append({
+					'first_name': first_name,
+					'last_name': last_name,
+					'section': section,
+					'program': program,
+					'year_level': year_level or 'N/A',
+					'is_duplicate': is_duplicate
+				})
+		
+		# Clean up temp file
+		os.remove(temp_path)
+		
+		return jsonify({
+			'success': True,
+			'preview_data': preview_data,
+			'total_rows': total_rows,
+			'new_count': new_count,
+			'duplicate_count': duplicate_count
+		})
+		
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.post('/students/import')
+@login_required
+@admin_required
+def import_students():
+	"""Execute student import from CSV"""
+	try:
+		if 'file' not in request.files:
+			return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+		
+		file = request.files['file']
+		if file.filename == '':
+			return jsonify({'success': False, 'error': 'No file selected'}), 400
+		
+		academic_year = request.form.get('academic_year', '2024-2025')
+		create_sections = request.form.get('create_sections', 'false').lower() == 'true'
+		
+		# Save file temporarily
+		import tempfile
+		import os
+		temp_dir = tempfile.gettempdir()
+		temp_path = os.path.join(temp_dir, f'import_{file.filename}')
+		file.save(temp_path)
+		
+		# Execute import
+		imported_count, skipped_count, errors = StudentImportService.import_students_from_csv(
+			temp_path,
+			academic_year,
+			create_sections=create_sections
+		)
+		
+		# Clean up temp file
+		os.remove(temp_path)
+		
+		return jsonify({
+			'success': True,
+			'imported_count': imported_count,
+			'skipped_count': skipped_count,
+			'errors': errors
+		})
+		
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
 
 

@@ -59,20 +59,12 @@
                             <!-- CSRF Protection -->
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             
-                            <!-- Role selection -->
-                            <div class="select-role">
-                                <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                                    <label class="btn active">
-                                        <input type="radio" name="role" value="discipline_officer" checked>
-                                        <div class="icon"><i class="fa-solid fa-user-shield"></i></div>
-                                        <span>Discipline Officer</span>
-                                    </label>
-                                    <label class="btn">
-                                        <input type="radio" name="role" value="discipline_committee">
-                                        <div class="icon"><i class="fa-solid fa-users-gear"></i></div>
-                                        <span>Discipline Committee</span>
-                                    </label>
-                                </div>
+                            <!-- Auto Role Detection Notice -->
+                            <div class="text-center mb-3">
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    <i class="fa fa-info-circle" style="margin-right: 5px;"></i>
+                                    Your role will be automatically detected
+                                </p>
                             </div>
 
                             <!-- Username -->
