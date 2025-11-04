@@ -58,6 +58,42 @@ try:
         db.create_all()
         print("✓ Database tables created")
         
+        # MIGRATION: Add soft delete columns to existing tables (PostgreSQL)
+        print("✓ Running database migrations for new columns...")
+        try:
+            # Check if we're using PostgreSQL
+            if 'postgresql' in str(db.engine.url):
+                # Add columns safely (IF NOT EXISTS for PostgreSQL)
+                migrations = [
+                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
+                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
+                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
+                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
+                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
+                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
+                    "CREATE INDEX IF NOT EXISTS idx_cases_is_deleted ON cases(is_deleted)",
+                    "CREATE INDEX IF NOT EXISTS idx_persons_is_deleted ON persons(is_deleted)",
+                    "CREATE INDEX IF NOT EXISTS idx_cases_person_id ON cases(person_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_cases_case_type ON cases(case_type)",
+                    "CREATE INDEX IF NOT EXISTS idx_persons_role ON persons(role)",
+                ]
+                
+                for sql in migrations:
+                    try:
+                        db.session.execute(db.text(sql))
+                    except Exception as e:
+                        # If column already exists, continue
+                        if 'already exists' not in str(e).lower():
+                            print(f"⚠ Migration warning: {sql[:50]}... - {str(e)[:100]}")
+                
+                db.session.commit()
+                print("✓ Database migrations completed successfully")
+            else:
+                print("✓ Using SQLite - migrations not needed")
+        except Exception as e:
+            print(f"⚠ Migration error (non-fatal): {e}")
+            db.session.rollback()
+        
         # Import models after db is ready
         from app.models import Role, User
         from werkzeug.security import generate_password_hash
