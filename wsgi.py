@@ -80,11 +80,15 @@ try:
                 
                 for sql in migrations:
                     try:
+                        print(f"  → {sql[:70]}...")
                         db.session.execute(db.text(sql))
+                        print(f"    ✓ Success")
                     except Exception as e:
                         # If column already exists, continue
-                        if 'already exists' not in str(e).lower():
-                            print(f"⚠ Migration warning: {sql[:50]}... - {str(e)[:100]}")
+                        if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
+                            print(f"    ⚠ Already exists (OK)")
+                        else:
+                            print(f"    ✗ ERROR: {str(e)[:150]}")
                 
                 db.session.commit()
                 print("✓ Database migrations completed successfully")
