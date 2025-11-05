@@ -33,17 +33,32 @@ def _select_config():
 # Create the application instance
 app = create_app(_select_config())
 
-# Add error handler to log errors to stdout (for Railway logs)
+# Add request teardown to rollback failed transactions
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    from app.extensions import db
+    if exception:
+        # Rollback on any exception to prevent InFailedSqlTransaction
+        try:
+            db.session.rollback()
+        except:
+            pass
+    try:
+        db.session.remove()
+    except:
+        pass
+
+# Add error handler with proper transaction rollback (prevents logging loops)
 @app.errorhandler(500)
 def handle_500_error(e):
-    import traceback
-    error_traceback = traceback.format_exc()
-    print("="*60)
-    print("🚨 500 ERROR OCCURRED:")
-    print(error_traceback)
-    print("="*60)
-    # Call the original error handler
-    return app.handle_exception(e)
+    from app.extensions import db
+    # CRITICAL: Rollback any failed transactions to prevent InFailedSqlTransaction loops
+    try:
+        db.session.rollback()
+    except:
+        pass
+    # Simple error response without database access (prevents logging loops)
+    return "Internal Server Error - Check Railway logs for details", 500
 
 # Initialize database on first run (for Railway deployment)
 print("=== DATABASE INITIALIZATION START ===")
@@ -73,8 +88,9 @@ try:
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
-                    # Section reference column for persons (Panel Recommendation)
+                    # Foreign key columns (Panel Recommendations)
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS section_id INTEGER",
+                    "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS room_id INTEGER",
                     # Indexes
                     "CREATE INDEX IF NOT EXISTS idx_cases_is_deleted ON cases(is_deleted)",
                     "CREATE INDEX IF NOT EXISTS idx_persons_is_deleted ON persons(is_deleted)",
