@@ -26,23 +26,30 @@ class NarrativeOCRService:
         """
         # ENHANCED: Look for names in context, not just keywords
         patterns = [
-            # "full name is X" patterns
-            r"(?:full\s+name|name)\s+(?:is|was|:|ng estudyante ay)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
+            # "full name is X" or "Name: X" patterns (most common in forms)
+            r"(?:full\s+name|name)\s*[:=]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
+            r"(?:full\s+name|name)\s+(?:is|was|ng estudyante ay)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
             
             # "student X" where X is a proper name (2-4 words, capitalized)
-            r"(?:student|estudyante|mag-aaral)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s+(?:was|is|enrolled|from|ng)",
+            r"(?:student|estudyante|mag-aaral)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})\s+(?:was|is|enrolled|from|ng|,)",
             
             # After action verbs (found, caught, saw, reported)
-            r"(?:found|caught|saw|reported|witnessed)\s+(?:the\s+student\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
+            r"(?:found|caught|saw|reported|witnessed)\s+(?:the\s+student\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
             
-            # Filipino pattern "si X"
-            r"(?:si|kay|ni)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
+            # Filipino pattern "si X" or "kay X" or "ni X"
+            r"(?:si|kay|ni)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
             
             # Before action verbs
-            r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s+(?:admitted|confessed|was caught|violated)",
+            r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})\s+(?:admitted|confessed|was caught|violated|committed)",
             
             # In formal sentence structure
-            r"(?:name|pangalan|ngalan)\s+(?:is|ay|:)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
+            r"(?:name|pangalan|ngalan)\s+(?:is|ay|:)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
+            
+            # Standalone capitalized names (2-4 words) at sentence start
+            r"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})\s+(?:from|of|in|at|enrolled|studying)",
+            
+            # After "regarding" or "concerning"
+            r"(?:regarding|concerning|about)\s+(?:student\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
         ]
         
         # Common false positives to exclude

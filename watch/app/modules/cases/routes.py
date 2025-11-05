@@ -1456,18 +1456,36 @@ def extract_ocr_data():
 		# Validate extraction and get warnings
 		is_valid, validation_errors = NarrativeOCRService.validate_extraction(extracted_data)
 		
+		# Calculate extraction confidence based on successfully extracted fields
+		# Core fields: first_name, last_name, section (for students), date
+		# Additional fields: program_or_dept, offense_type, offense_category
+		total_fields = 7  # Total expected fields
+		extracted_fields = 0
+		
+		if extracted_data.get('first_name'): extracted_fields += 1
+		if extracted_data.get('last_name'): extracted_fields += 1
+		if extracted_data.get('section'): extracted_fields += 1
+		if extracted_data.get('date'): extracted_fields += 1
+		if extracted_data.get('program_or_dept'): extracted_fields += 1
+		if extracted_data.get('offense_type'): extracted_fields += 1
+		if extracted_data.get('offense_category'): extracted_fields += 1
+		
+		# Confidence score: 0.0 to 1.0 (percentage of fields extracted)
+		extraction_confidence = extracted_fields / total_fields if total_fields > 0 else 0.0
+		
 		# Log activity
 		user = get_current_user()
 		if user:
 			ActivityLog.log_activity(
 				user_id=user.id,
 				action="OCR Extraction",
-				description=f"Extracted {entity_type} data from narrative OCR text using enhanced NLP-style extraction"
+				description=f"Extracted {entity_type} data from narrative OCR text using enhanced NLP-style extraction (Confidence: {extraction_confidence*100:.0f}%)"
 			)
 		
 		return jsonify({
 			'success': True,
 			'data': extracted_data,
+			'extraction_confidence': extraction_confidence,  # Added confidence score (0.0-1.0)
 			'validation': {
 				'is_valid': is_valid,
 				'errors': validation_errors
