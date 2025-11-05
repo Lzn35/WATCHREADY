@@ -1,0 +1,9 @@
+[phases.setup]
+aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "poppler-utils"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 60 wsgi:app"
+
