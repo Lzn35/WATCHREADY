@@ -65,12 +65,17 @@ try:
             if 'postgresql' in str(db.engine.url):
                 # Add columns safely (IF NOT EXISTS for PostgreSQL)
                 migrations = [
+                    # Soft delete columns for cases
                     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
                     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
                     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
+                    # Soft delete columns for persons
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
+                    # Section reference column for persons (Panel Recommendation)
+                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS section_id INTEGER",
+                    # Indexes
                     "CREATE INDEX IF NOT EXISTS idx_cases_is_deleted ON cases(is_deleted)",
                     "CREATE INDEX IF NOT EXISTS idx_persons_is_deleted ON persons(is_deleted)",
                     "CREATE INDEX IF NOT EXISTS idx_cases_person_id ON cases(person_id)",
