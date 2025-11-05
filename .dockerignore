@@ -1,0 +1,53 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+watch/instance/watch_db.sqlite*
+watch/instance/*.sqlite*
+
+# Logs
+*.log
+logs/
+watch/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+COMPREHENSIVE_SYSTEM_ANALYSIS.md
+PANEL_RECOMMENDATIONS_IMPLEMENTATION.md
+SYSTEM_ARCHITECTURE.md
+
+# Backup files
+*.backup
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (will be stored in Railway volumes or S3)
+watch/instance/uploads/
+uploads/
+
