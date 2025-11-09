@@ -111,7 +111,7 @@ def create_appointment():
 			print(f"⚠️ Error generating appointment number: {e}")
 			appointment_number = None  # Will be set later or auto-generated
 		
-		# Create new appointment
+		# Create new appointment with PENDING status (requires discipline officer approval)
 		appointment = Appointment(
 			appointment_number=appointment_number,
 			full_name=data['full_name'],
@@ -119,7 +119,7 @@ def create_appointment():
 			appointment_date=appointment_datetime,
 			appointment_type=data['appointment_type'],
 			appointment_description=data.get('appointment_description', ''),
-			status='Pending'
+			status='Pending'  # Must be explicitly approved by clicking "Confirm" button
 		)
 		
 		db.session.add(appointment)
@@ -257,14 +257,21 @@ def create_appointment():
 @csrf.exempt
 @login_required
 def confirm_appointment(appointment_id):
-	"""Confirm an appointment and send email notification"""
+	"""
+	Confirm an appointment and send email notification
+	WORKFLOW: Student submits (Pending) → Discipline Officer clicks Confirm → Status becomes Scheduled
+	"""
 	try:
 		appointment = Appointment.query.get_or_404(appointment_id)
+		
+		# VALIDATION: Only Pending appointments can be confirmed
+		if appointment.status != 'Pending':
+			return jsonify({'error': f'Cannot confirm appointment with status: {appointment.status}. Only Pending appointments can be confirmed.'}), 400
 		
 		# Get current user (the one confirming the appointment)
 		current_user = get_current_user()
 		
-		# Update status to scheduled
+		# Update status to Scheduled
 		appointment.status = 'Scheduled'
 		try:
 			db.session.commit()

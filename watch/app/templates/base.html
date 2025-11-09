@@ -576,8 +576,9 @@
 			var warningTimer;
 			var warningShown = false;
 			
-			// Activity events that reset the timer
-			var activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+			// Activity events that reset the timer - ONLY INTENTIONAL USER ACTIONS (not mousemove!)
+			// Panel Recommendation: 10-15 minutes idle timeout
+			var activityEvents = ['mousedown', 'keydown', 'touchstart', 'click'];
 			
 			// Function to reset idle timer
 			function resetIdleTimer() {
@@ -705,29 +706,19 @@
 				}, 2000);
 			}
 			
-			// Attach activity listeners
+			// Attach activity listeners - only for INTENTIONAL user actions
 			activityEvents.forEach(function(event) {
 				document.addEventListener(event, function() {
-					// Reset timer on any activity, even if warning is shown
-					// This allows user to interact and stay logged in
+					// Reset timer on intentional activity only
 					resetIdleTimer();
 				}, true);
-			});
-			
-			// Also listen for focus events (user switches back to tab)
-			window.addEventListener('focus', function() {
-				resetIdleTimer();
 			});
 			
 			// Initialize timers on page load
 			resetIdleTimer();
 			
-			// Reset timer when page becomes visible
-			document.addEventListener('visibilitychange', function() {
-				if (!document.hidden) {
-					resetIdleTimer();
-				}
-			});
+			// Log when timer is initialized
+			console.log('⏱️ Session timeout initialized: 10 minutes idle = auto logout');
 		})();
 		{% endif %}
 	</script>
