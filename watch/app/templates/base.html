@@ -283,10 +283,10 @@
 			// Load initial notifications
 			loadGlobalNotifications();
 			
-			// Set up polling for real-time updates every 3 seconds
+			// Set up polling for real-time updates every 30 seconds (not too frequent!)
 			setInterval(function() {
 				loadGlobalNotifications();
-			}, 3000);
+			}, 30000);  // Changed from 3000ms (3s) to 30000ms (30s)
 		}
 
 		function loadGlobalNotifications() {

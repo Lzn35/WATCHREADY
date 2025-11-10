@@ -312,12 +312,35 @@ def confirm_appointment(appointment_id):
 				print(f"❌ Notification error: {e}")
 		
 		# Send confirmation email with sender information (non-blocking, wrapped in try-except)
-		try:
-			EmailService.send_appointment_confirmation(appointment, sender_user=current_user)
-		except Exception as e:
-			print(f"❌ Email sending error (non-critical): {e}")
-			traceback.print_exc()
-			# Don't fail the request if email fails - appointment is already confirmed
+		print(f"🔔🔔🔔 STARTING EMAIL SEND PROCESS FOR APPOINTMENT #{appointment_id}")
+		print(f"📧 Recipient: {appointment.email}")
+		print(f"👤 Sender User: {current_user.full_name if current_user else 'Unknown'}")
+		
+		# Check if email is configured
+		from ...models import EmailSettings
+		email_settings = EmailSettings.get_settings()
+		print(f"✉️ Email Configured: {email_settings.is_configured()}")
+		print(f"✉️ Email Enabled: {email_settings.enabled}")
+		print(f"✉️ Provider: {email_settings.provider}")
+		print(f"✉️ Sender Email: {email_settings.sender_email}")
+		
+		if not email_settings.is_configured():
+			print(f"⚠️ EMAIL NOT CONFIGURED! Skipping email send.")
+		else:
+			try:
+				print(f"📤 Calling EmailService.send_appointment_confirmation()...")
+				result = EmailService.send_appointment_confirmation(appointment, sender_user=current_user)
+				print(f"📬 Email send result: {result}")
+				if result:
+					print(f"✅ EMAIL QUEUED SUCCESSFULLY!")
+				else:
+					print(f"❌ EMAIL FAILED TO QUEUE!")
+			except Exception as e:
+				print(f"❌ Email sending error (non-critical): {e}")
+				traceback.print_exc()
+				# Don't fail the request if email fails - appointment is already confirmed
+		
+		print(f"🔔🔔🔔 EMAIL PROCESS COMPLETED FOR APPOINTMENT #{appointment_id}")
 		
 		# Delete related notifications
 		try:
