@@ -1,6 +1,10 @@
 # Use official Python runtime as base image
 FROM python:3.11-slim
 
+# Prevent Python from buffering stdout/stderr (critical for Railway logs!)
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Set working directory
 WORKDIR /app
 
@@ -24,5 +28,7 @@ COPY . .
 EXPOSE 8080
 
 # Run the application using gunicorn
-CMD gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 60 wsgi:app
+# Use shell form to properly expand $PORT variable
+# Capture all output so we can see what's happening in Railway logs
+CMD ["sh", "-c", "gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 60 --access-logfile - --error-logfile - --log-level info --capture-output wsgi:app"]
 
