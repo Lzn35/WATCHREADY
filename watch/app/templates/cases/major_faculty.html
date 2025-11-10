@@ -812,10 +812,13 @@ $(document).ready(function() {
 							return null;
 						}
 
-						// Show extraction results
-						let message = 'Faculty data extracted successfully!\n\n';
+					// Show extraction results
+					let message = 'Faculty data extracted successfully!\n\n';
+					// Only show confidence if it's available and valid
+					if (data.extraction_confidence !== undefined && data.extraction_confidence !== null && !isNaN(data.extraction_confidence)) {
 						message += `Confidence: ${(data.extraction_confidence * 100).toFixed(0)}%\n\n`;
-						message += 'Extracted Fields:\n';
+					}
+					message += 'Extracted Fields:\n';
 						if (data.first_name) message += `• First Name: ${data.first_name}\n`;
 						if (data.last_name) message += `• Last Name: ${data.last_name}\n`;
 						if (data.date) message += `• Date: ${data.date}\n`;

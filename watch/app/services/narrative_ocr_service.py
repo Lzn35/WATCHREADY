@@ -30,6 +30,9 @@ class NarrativeOCRService:
             r"(?:full\s+name|name)\s*[:=]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
             r"(?:full\s+name|name)\s+(?:is|was|ng estudyante ay)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
             
+            # "student named X" - CRITICAL for narrative text!
+            r"(?:student|estudyante|mag-aaral)\s+named\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
+            
             # "student X" where X is a proper name (2-4 words, capitalized)
             r"(?:student|estudyante|mag-aaral)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})\s+(?:was|is|enrolled|from|ng|,)",
             
@@ -52,12 +55,13 @@ class NarrativeOCRService:
             r"(?:regarding|concerning|about)\s+(?:student\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})",
         ]
         
-        # Common false positives to exclude
+        # Common false positives to exclude (but NOT Filipino name particles!)
         false_positives = [
             'Information Technology', 'Science In', 'Bachelor Of', 'Category A',
             'Smoking Inside', 'The Student', 'A Student', 'From Section',
-            'Section From', 'The Janitor', 'De La', 'Inside Campus'
+            'Section From', 'The Janitor', 'Inside Campus', 'The Restroom'
         ]
+        # NOTE: Removed "De La" from false positives - it's part of valid Filipino names!
         
         for pattern in patterns:
             matches = re.finditer(pattern, text, re.IGNORECASE)
