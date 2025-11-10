@@ -1,12 +1,15 @@
 """
 Email service for sending appointment notifications.
 Supports Gmail and Outlook SMTP for actual email sending.
+NOW ALSO SUPPORTS SENDGRID WEB API (Railway-compatible!)
 """
 
 import logging
 import smtplib
 import socket
 import threading
+import os
+import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -46,6 +49,92 @@ SMTP_CONFIG = {
 
 class EmailService:
     """Email service for appointment notifications"""
+    
+    @staticmethod
+    def _send_via_sendgrid(to_email: str, subject: str, body: str, from_name: str = None, from_email: str = None) -> bool:
+        """
+        Send email via SendGrid Web API (Railway-compatible!)
+        Uses SENDGRID_API_KEY environment variable
+        
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        try:
+            # Get SendGrid API key from environment
+            api_key = os.environ.get('SENDGRID_API_KEY')
+            
+            if not api_key:
+                print("⚠️ SENDGRID_API_KEY not found in environment variables")
+                return False
+            
+            # Get email settings for sender info
+            try:
+                email_settings = EmailSettings.get_settings()
+                sender_email = from_email or email_settings.sender_email or 'noreply@sti-watch.com'
+                sender_name = from_name or email_settings.sender_name or 'WATCH System'
+            except:
+                sender_email = 'noreply@sti-watch.com'
+                sender_name = 'WATCH System'
+            
+            # Prepare SendGrid API request
+            url = "https://api.sendgrid.com/v3/mail/send"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "personalizations": [
+                    {
+                        "to": [{"email": to_email}],
+                        "subject": subject
+                    }
+                ],
+                "from": {
+                    "email": sender_email,
+                    "name": sender_name
+                },
+                "content": [
+                    {
+                        "type": "text/plain",
+                        "value": body
+                    }
+                ]
+            }
+            
+            print(f"\n{'='*60}")
+            print(f"📧 SENDING EMAIL VIA SENDGRID WEB API")
+            print(f"From: {sender_name} <{sender_email}>")
+            print(f"To: {to_email}")
+            print(f"Subject: {subject}")
+            print(f"{'='*60}")
+            
+            # Send request to SendGrid API
+            response = requests.post(url, json=data, headers=headers, timeout=10)
+            
+            # Check response
+            if response.status_code == 202:  # SendGrid returns 202 for success
+                print(f"✅ EMAIL SENT SUCCESSFULLY VIA SENDGRID!")
+                print(f"Response: {response.status_code} - Email queued for delivery")
+                print(f"{'='*60}\n")
+                logger.info(f"Email sent successfully to {to_email} via SendGrid")
+                return True
+            else:
+                print(f"❌ SENDGRID API ERROR!")
+                print(f"Status Code: {response.status_code}")
+                print(f"Response: {response.text}")
+                print(f"{'='*60}\n")
+                logger.error(f"SendGrid API error: {response.status_code} - {response.text}")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            print(f"❌ SENDGRID REQUEST FAILED: {e}")
+            logger.error(f"SendGrid request failed: {e}")
+            return False
+        except Exception as e:
+            print(f"❌ SENDGRID ERROR: {e}")
+            logger.error(f"SendGrid error: {e}")
+            return False
     
     @staticmethod
     def _send_email_sync(to_email: str, subject: str, body: str, from_name: str = None, from_email: str = None) -> bool:
@@ -231,19 +320,23 @@ class EmailService:
             bool: True if email was queued successfully, False otherwise
         """
         try:
-            # Check if email is configured first (quick check)
-            email_settings = EmailSettings.get_settings()
-            if not email_settings.is_configured():
-                logger.warning("Email not configured - email will only be logged to console")
-                print(f"\n{'='*60}")
-                print(f"EMAIL NOT SENT (Email not configured)")
-                print(f"{'='*60}")
-                print(f"To: {to_email}")
-                print(f"Subject: {subject}")
-                print(f"Body:\n{body}")
-                print(f"\nTIP: Configure email in Settings > System Settings > Email Configuration")
-                print(f"{'='*60}\n")
-                return False
+            # Check if SendGrid API key is available (Railway-compatible!)
+            sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
+            
+            if not sendgrid_api_key:
+                # No SendGrid - check if SMTP is configured
+                email_settings = EmailSettings.get_settings()
+                if not email_settings.is_configured():
+                    logger.warning("Email not configured - neither SendGrid nor SMTP available")
+                    print(f"\n{'='*60}")
+                    print(f"EMAIL NOT SENT (Email not configured)")
+                    print(f"{'='*60}")
+                    print(f"To: {to_email}")
+                    print(f"Subject: {subject}")
+                    print(f"Body:\n{body}")
+                    print(f"\nTIP: Configure SendGrid API key or SMTP in Settings")
+                    print(f"{'='*60}\n")
+                    return False
             
             # Get Flask app instance for context
             from flask import current_app
@@ -254,6 +347,16 @@ class EmailService:
                 # Create application context for the background thread
                 with app.app_context():
                     try:
+                        # TRY SENDGRID FIRST (Railway-compatible!)
+                        if sendgrid_api_key:
+                            print("🚀 Attempting to send via SendGrid Web API...")
+                            success = EmailService._send_via_sendgrid(to_email, subject, body, from_name, from_email)
+                            if success:
+                                return  # Success! Done.
+                            else:
+                                print("⚠️ SendGrid failed, falling back to SMTP...")
+                        
+                        # FALLBACK TO SMTP if SendGrid fails or not available
                         EmailService._send_email_sync(to_email, subject, body, from_name, from_email)
                     except Exception as e:
                         logger.error(f"Background email sending error: {e}")

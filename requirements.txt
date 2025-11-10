@@ -5,6 +5,7 @@ flask-wtf==1.2.1
 flask-login==0.6.3
 psycopg2-binary==2.9.11  # PostgreSQL adapter
 python-dotenv==1.0.1
+requests==2.31.0  # For SendGrid Web API
 alembic==1.13.2
 marshmallow==3.21.3
 werkzeug==3.0.3
