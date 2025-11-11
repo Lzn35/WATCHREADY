@@ -1376,7 +1376,7 @@ def archive_cases(case_type, entity_type):
 	- Restore button
 	- Permanently delete button (admin only)
 	"""
-	from datetime import datetime, timedelta
+	from datetime import datetime, timedelta, date
 	
 	# Get all soft-deleted cases for this case_type and entity_type
 	archived_cases = Case.query.join(Person).filter(
