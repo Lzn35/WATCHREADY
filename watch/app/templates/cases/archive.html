@@ -146,7 +146,12 @@
 						</p>
 						{% endif %}
 						<p class="mb-1">
-							<strong>Description:</strong> {{ case.description[:100] }}{% if case.description|length > 100 %}...{% endif %}
+							<strong>Description:</strong> 
+							{% if case.description %}
+								{{ case.description[:100] }}{% if case.description|length > 100 %}...{% endif %}
+							{% else %}
+								<em>No description</em>
+							{% endif %}
 						</p>
 						<p class="mb-1 text-muted">
 							<small>
