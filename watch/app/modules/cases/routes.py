@@ -1455,9 +1455,19 @@ def restore_case_api(case_id):
 		case = Case.query.filter_by(id=case_id, is_deleted=True).first_or_404()
 		person_name = case.person.full_name
 		case_type = case.case_type
+		person = case.person
 		
 		# Restore the case
 		case.restore()
+		
+		# IMPORTANT: Also restore the person if they are deleted
+		# This ensures the case becomes visible in the main cases list
+		if person and person.is_deleted:
+			print(f"🔄 Person '{person_name}' is also deleted, restoring person...")
+			person.restore()
+			print(f"✅ Person '{person_name}' restored successfully!")
+		
+		db.session.commit()
 		
 		# Log activity
 		user = get_current_user()
@@ -1465,16 +1475,19 @@ def restore_case_api(case_id):
 			ActivityLog.log_activity(
 				user_id=user.id,
 				action="Case Restored",
-				description=f"Restored {case_type} case for {person_name} from archive"
+				description=f"Restored {case_type} case for {person_name} from archive (person also restored)"
 			)
 		
 		return jsonify({
 			'success': True,
-			'message': 'Case restored successfully.'
+			'message': 'Case and person restored successfully. Case is now visible in main list.'
 		})
 		
 	except Exception as e:
 		db.session.rollback()
+		print(f"❌ Error restoring case: {e}")
+		import traceback
+		traceback.print_exc()
 		return jsonify({'error': 'Error restoring case'}), 500
 
 
