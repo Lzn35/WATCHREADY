@@ -1,41 +1,23 @@
 """
-WATCH System - Stress Test Data Generator for Railway PostgreSQL
+WATCH System - BACKUP Stress Test Data Generator (LOCAL SQLITE ONLY)
 
-Generates realistic test data for scalability testing:
+⚠️  DEPRECATED: Use the web interface instead!
+Go to: Settings → Test Data Generator (on Railway)
+
+This script is kept as a BACKUP for local testing only.
+For Railway deployment, use the web-based generator!
+
+Generates FULL dataset (takes 10-30 minutes):
 - 1,200 Schedules
-- 6,000 Attendance records (200/day × 30 days)
-- 60,000 Persons (40k students, 10k faculty, 10k staff)
-- 120,000 Cases (20k minor + 20k major per role)
-- 48,000 Attachments (80% of major cases)
+- 6,000 Attendance records
+- 60,000 Persons
+- 120,000 Cases
 - 500 Appointments
 
-CONNECTS DIRECTLY TO RAILWAY POSTGRESQL!
-Panel and beneficiaries can test the LIVE system with large data!
+USAGE (LOCAL SQLite ONLY):
+    python generate_stress_test_data.py
 
-SETUP STEPS:
-
-1. Get Railway DATABASE_URL:
-   - Go to Railway Dashboard → Your Service
-   - Click "Variables" tab
-   - Copy the DATABASE_URL value (starts with postgresql://)
-
-2. Set environment variable (PowerShell):
-   $env:DATABASE_URL="paste_your_database_url_here"
-
-3. Run the script:
-   python generate_stress_test_data.py
-
-4. Type 'GENERATE' to confirm
-
-5. Wait 10-30 minutes (shows progress bars!)
-
-6. Done! Data is now LIVE on sti-watch.com!
-
-WARNING: 
-- Takes 10-30 minutes to complete
-- Runs from your computer, writes to Railway database
-- No Railway timeout issues (runs locally!)
-- Database size will increase by 500MB-1GB
+This populates your LOCAL database (watch_db.sqlite), NOT Railway!
 """
 
 import os
@@ -154,55 +136,32 @@ startxref
 
 def main():
     print("=" * 80)
-    print("🚀 WATCH SYSTEM - STRESS TEST DATA GENERATOR")
+    print("🚀 WATCH SYSTEM - LOCAL STRESS TEST (BACKUP METHOD)")
     print("=" * 80)
     print()
-    
-    # Check if DATABASE_URL is set
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        print("❌ ERROR: DATABASE_URL environment variable not set!")
-        print()
-        print("📝 To set it (PowerShell):")
-        print('   $env:DATABASE_URL="postgresql://user:pass@host:5432/railway"')
-        print()
-        print("🔍 Get your Railway DATABASE_URL:")
-        print("   1. Go to Railway Dashboard")
-        print("   2. Click your service")
-        print("   3. Go to 'Variables' tab")
-        print("   4. Copy the DATABASE_URL value")
-        print()
-        return
-    
-    print("✅ DATABASE_URL detected!")
-    print(f"   Target: {database_url.split('@')[1] if '@' in database_url else 'Unknown'}")
+    print("⚠️  NOTICE: For Railway, use the web interface instead!")
+    print("   Go to: Settings → Test Data Generator")
     print()
-    print("⚠️  WARNING: This will generate data DIRECTLY on Railway PostgreSQL!")
+    print("This script generates data for LOCAL SQLite database only.")
+    print()
+    print("Generates:")
     print("   - 1,200 Schedules")
-    print("   - ~6,000 Attendance records")
-    print("   - 60,000 Persons (40k students, 10k faculty, 10k staff)")
-    print("   - 120,000 Cases (20k × 6 types)")
-    print("   - ~48,000 Attachments (80% of major cases)")
+    print("   - 6,000 Attendance records")
+    print("   - 60,000 Persons")
+    print("   - 120,000 Cases")
     print("   - 500 Appointments")
     print()
-    print("📊 Estimated generation time: 10-30 minutes")
-    print("💾 Estimated database size increase: +500MB-1GB")
-    print()
-    print("⚠️  This will run from YOUR computer but write to RAILWAY database!")
-    print("   Panel and beneficiaries will see this data LIVE on sti-watch.com!")
+    print("⏱️  Estimated time: 10-30 minutes")
+    print("💾 Database file size: ~500MB-1GB")
     print()
     
-    response = input("Continue? Type 'GENERATE' to confirm: ").strip()
-    if response != 'GENERATE':
-        print("❌ Aborted by user")
+    response = input("Continue? (yes/no): ").strip().lower()
+    if response != 'yes':
+        print("❌ Aborted")
         return
     
     print()
-    print("🔧 Initializing Flask app with Railway PostgreSQL...")
-    
-    # Force use of DATABASE_URL from environment
-    os.environ['DATABASE_URL'] = database_url
-    
+    print("🔧 Initializing Flask app (LOCAL SQLite)...")
     app = create_app()
     
     with app.app_context():
