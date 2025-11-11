@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Archive - {{ case_type|title }} Cases - {{ entity_type|title }} - WATCH{% endblock %}
+
+{% block extra_css %}
+<style>
+.archive-banner {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 20px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+}
+
+.case-card {
+	border-left: 4px solid #6c757d;
+	background: #f8f9fa;
+	padding: 15px;
+	margin-bottom: 15px;
+	border-radius: 4px;
+	transition: all 0.3s ease;
+}
+
+.case-card:hover {
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+	transform: translateY(-2px);
+}
+
+.days-badge {
+	font-size: 18px;
+	font-weight: bold;
+	padding: 8px 15px;
+	border-radius: 20px;
+}
+
+.days-critical {
+	background: #dc3545;
+	color: white;
+}
+
+.days-warning {
+	background: #ffc107;
+	color: #212529;
+}
+
+.days-safe {
+	background: #28a745;
+	color: white;
+}
+
+.empty-state {
+	text-align: center;
+	padding: 60px 20px;
+	color: #6c757d;
+}
+
+.empty-state i {
+	font-size: 64px;
+	margin-bottom: 20px;
+	opacity: 0.3;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pd-20 card-box mb-30">
+	<!-- Header -->
+	<div class="clearfix mb-3">
+		<div class="pull-left">
+			<h4 class="text-blue h4">
+				<i class="bi bi-archive" style="margin-right: 8px;"></i>
+				Archive - {{ case_type|title }} Cases - {{ entity_type|title }}
+			</h4>
+		</div>
+		<div class="pull-right">
+			<a href="{{ url_for('cases.' + case_type + '_cases_' + entity_type) }}" class="btn btn-primary">
+				<i class="bi bi-arrow-left"></i> Back to Cases
+			</a>
+		</div>
+	</div>
+	
+	<!-- Info Banner -->
+	<div class="archive-banner">
+		<h5><i class="bi bi-info-circle"></i> About the Archive</h5>
+		<p class="mb-0">
+			Deleted cases are stored here for <strong>60 days</strong> before permanent deletion.
+			You can restore any case within this period. After 60 days, cases are automatically
+			purged with a CSV backup created for records.
+		</p>
+	</div>
+	
+	<!-- Statistics -->
+	<div class="row mb-4">
+		<div class="col-md-4">
+			<div class="card text-center">
+				<div class="card-body">
+					<h3 class="mb-0">{{ archived_cases|length }}</h3>
+					<p class="text-muted mb-0">Archived Cases</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="card text-center">
+				<div class="card-body">
+					<h3 class="mb-0 text-warning">
+						{{ archived_cases|selectattr('days_remaining', 'le', 7)|list|length }}
+					</h3>
+					<p class="text-muted mb-0">Expiring Soon (≤7 days)</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="card text-center">
+				<div class="card-body">
+					<h3 class="mb-0 text-success">
+						{{ archived_cases|selectattr('days_remaining', 'gt', 7)|list|length }}
+					</h3>
+					<p class="text-muted mb-0">Safe (>7 days)</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Archived Cases List -->
+	{% if archived_cases %}
+		<div id="archivedCasesList">
+			{% for item in archived_cases %}
+			{% set case = item.case %}
+			{% set days_remaining = item.days_remaining %}
+			{% set will_be_purged = item.will_be_purged %}
+			
+			<div class="case-card" data-case-id="{{ case.id }}">
+				<div class="row align-items-center">
+					<!-- Case Info -->
+					<div class="col-md-6">
+						<h5 class="mb-2">
+							<i class="bi bi-person-fill text-muted"></i>
+							{{ case.person.full_name }}
+						</h5>
+						<p class="mb-1">
+							<strong>Program/Dept:</strong> {{ case.person.program_or_dept or 'N/A' }}
+						</p>
+						{% if case.person.section %}
+						<p class="mb-1">
+							<strong>Section:</strong> {{ case.person.section }}
+						</p>
+						{% endif %}
+						<p class="mb-1">
+							<strong>Description:</strong> {{ case.description[:100] }}{% if case.description|length > 100 %}...{% endif %}
+						</p>
+						<p class="mb-1 text-muted">
+							<small>
+								<i class="bi bi-calendar"></i> Reported: {{ case.date_reported.strftime('%b %d, %Y') }}
+								| <i class="bi bi-trash"></i> Deleted: {{ case.deleted_at.strftime('%b %d, %Y') if case.deleted_at else 'Unknown' }}
+							</small>
+						</p>
+						{% if will_be_purged %}
+						<p class="mb-0 text-danger">
+							<small><i class="bi bi-clock-history"></i> Will be permanently deleted on: {{ will_be_purged.strftime('%b %d, %Y') }}</small>
+						</p>
+						{% endif %}
+					</div>
+					
+					<!-- Days Remaining Badge -->
+					<div class="col-md-3 text-center">
+						{% if days_remaining <= 7 %}
+						<span class="days-badge days-critical">
+							{{ days_remaining }} days left
+						</span>
+						{% elif days_remaining <= 30 %}
+						<span class="days-badge days-warning">
+							{{ days_remaining }} days left
+						</span>
+						{% else %}
+						<span class="days-badge days-safe">
+							{{ days_remaining }} days left
+						</span>
+						{% endif %}
+					</div>
+					
+					<!-- Actions -->
+					<div class="col-md-3 text-right">
+						<button class="btn btn-success btn-sm mb-2" onclick="restoreCase({{ case.id }})">
+							<i class="bi bi-arrow-counterclockwise"></i> Restore
+						</button>
+						<button class="btn btn-danger btn-sm" onclick="permanentlyDeleteCase({{ case.id }})">
+							<i class="bi bi-trash-fill"></i> Delete Now
+						</button>
+					</div>
+				</div>
+			</div>
+			{% endfor %}
+		</div>
+	{% else %}
+		<div class="empty-state">
+			<i class="bi bi-archive"></i>
+			<h4>No Archived Cases</h4>
+			<p>There are no deleted cases in the archive.</p>
+			<a href="{{ url_for('cases.' + case_type + '_cases_' + entity_type) }}" class="btn btn-primary">
+				<i class="bi bi-arrow-left"></i> Back to Cases
+			</a>
+		</div>
+	{% endif %}
+</div>
+
+<!-- Success/Error Messages -->
+<div id="messageContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function restoreCase(caseId) {
+	if (!confirm('Restore this case from the archive?')) {
+		return;
+	}
+	
+	fetch(`/cases/api/case/${caseId}/restore`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRFToken': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			// Show success message
+			showMessage('success', data.message);
+			
+			// Remove the case card from view
+			setTimeout(() => {
+				document.querySelector(`[data-case-id="${caseId}"]`).remove();
+				
+				// Reload if no more cases
+				if (document.querySelectorAll('.case-card').length === 0) {
+					location.reload();
+				}
+			}, 1000);
+		} else {
+			showMessage('error', data.error || 'Failed to restore case');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		showMessage('error', 'An error occurred while restoring the case');
+	});
+}
+
+function permanentlyDeleteCase(caseId) {
+	if (!confirm('⚠️ PERMANENTLY DELETE this case?\n\nThis action CANNOT be undone! The case will be deleted immediately.')) {
+		return;
+	}
+	
+	if (!confirm('Are you absolutely sure? This will PERMANENTLY delete the case from the database.')) {
+		return;
+	}
+	
+	fetch(`/cases/api/case/${caseId}/permanent-delete`, {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRFToken': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			showMessage('success', data.message);
+			
+			// Remove the case card from view
+			setTimeout(() => {
+				document.querySelector(`[data-case-id="${caseId}"]`).remove();
+				
+				// Reload if no more cases
+				if (document.querySelectorAll('.case-card').length === 0) {
+					location.reload();
+				}
+			}, 1000);
+		} else {
+			showMessage('error', data.error || 'Failed to delete case');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		showMessage('error', 'An error occurred while deleting the case');
+	});
+}
+
+function showMessage(type, message) {
+	const container = document.getElementById('messageContainer');
+	const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+	const icon = type === 'success' ? 'check-circle' : 'x-circle';
+	
+	container.innerHTML = `
+		<div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+			<i class="bi bi-${icon}"></i> ${message}
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+	`;
+	
+	// Auto-dismiss after 5 seconds
+	setTimeout(() => {
+		container.innerHTML = '';
+	}, 5000);
+}
+</script>
+{% endblock %}
+

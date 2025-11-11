@@ -341,3 +341,42 @@ def upload_profile_picture():
 		return jsonify({'success': False, 'error': 'Failed to upload image. Please try again.'})
 
 
+@core_bp.route('/cron/purge-old-cases')
+def cron_purge_old_cases():
+	"""
+	Cron endpoint for automatic purging of old soft-deleted cases
+	This should be called daily by a scheduler (Railway Cron, external cron service, etc.)
+	
+	Call this URL daily: https://your-domain.com/cron/purge-old-cases
+	
+	Returns:
+		JSON with purge results
+	"""
+	from .services.purge_service import PurgeService
+	
+	try:
+		# Run automatic purge for cases older than 60 days
+		result = PurgeService.purge_old_cases_automatic(days_old=60)
+		
+		# Log the purge activity
+		print(f"🗑️ AUTO-PURGE COMPLETED: {result['message']}")
+		if result['csv_path']:
+			print(f"📄 CSV Backup: {result['csv_path']}")
+		
+		return jsonify({
+			'success': True,
+			'count': result['count'],
+			'message': result['message'],
+			'csv_backup': result['csv_path']
+		}), 200
+		
+	except Exception as e:
+		print(f"❌ AUTO-PURGE ERROR: {e}")
+		import traceback
+		traceback.print_exc()
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+

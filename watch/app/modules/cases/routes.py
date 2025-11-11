@@ -1366,6 +1366,44 @@ def delete_person_api():
 		return jsonify({'error': 'Error deleting person'}), 500
 
 
+@bp.get('/archive/<case_type>/<entity_type>')
+@login_required
+def archive_cases(case_type, entity_type):
+	"""View archived (soft-deleted) cases for a specific type and entity
+	
+	Shows all soft-deleted cases with:
+	- Days until permanent deletion (60 days from deletion)
+	- Restore button
+	- Permanently delete button (admin only)
+	"""
+	from datetime import datetime, timedelta
+	
+	# Get all soft-deleted cases for this case_type and entity_type
+	archived_cases = Case.query.join(Person).filter(
+		Case.is_deleted == True,
+		Case.case_type == case_type,
+		Person.role == entity_type
+	).order_by(Case.deleted_at.desc()).all()
+	
+	# Calculate days remaining for each case
+	archived_cases_data = []
+	for case in archived_cases:
+		days_since_deletion = (datetime.utcnow() - case.deleted_at).days if case.deleted_at else 0
+		days_remaining = max(0, 60 - days_since_deletion)
+		
+		archived_cases_data.append({
+			'case': case,
+			'days_remaining': days_remaining,
+			'will_be_purged': case.deleted_at + timedelta(days=60) if case.deleted_at else None
+		})
+	
+	return render_template('cases/archive.html',
+						   case_type=case_type,
+						   entity_type=entity_type,
+						   archived_cases=archived_cases_data,
+						   today=date.today())
+
+
 @bp.post('/api/case/<int:case_id>/restore')
 @login_required
 def restore_case_api(case_id):
@@ -1395,6 +1433,77 @@ def restore_case_api(case_id):
 	except Exception as e:
 		db.session.rollback()
 		return jsonify({'error': 'Error restoring case'}), 500
+
+
+@bp.delete('/api/case/<int:case_id>/permanent-delete')
+@login_required
+def permanent_delete_case_api(case_id):
+	"""API endpoint to permanently delete a case from archive (with CSV backup)"""
+	try:
+		import csv
+		import os
+		from datetime import datetime
+		
+		case = Case.query.filter_by(id=case_id, is_deleted=True).first_or_404()
+		person_name = case.person.full_name
+		case_type = case.case_type
+		entity_type = case.person.role
+		
+		# Create CSV backup before deletion
+		archive_dir = os.path.join('instance', 'archives', 'permanent_deletes')
+		os.makedirs(archive_dir, exist_ok=True)
+		
+		csv_filename = f'case_{case_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+		csv_path = os.path.join(archive_dir, csv_filename)
+		
+		# Write case data to CSV
+		with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+			fieldnames = ['Case ID', 'Person Name', 'Role', 'Program/Dept', 'Section',
+						 'Case Type', 'Description', 'Date Reported', 'Status', 'Remarks',
+						 'Created At', 'Deleted At', 'Deleted By']
+			writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+			
+			writer.writeheader()
+			writer.writerow({
+				'Case ID': case.id,
+				'Person Name': person_name,
+				'Role': entity_type,
+				'Program/Dept': case.person.program_or_dept or 'N/A',
+				'Section': case.person.section or 'N/A',
+				'Case Type': case_type,
+				'Description': case.description or 'N/A',
+				'Date Reported': case.date_reported.strftime('%Y-%m-%d'),
+				'Status': case.status,
+				'Remarks': case.remarks or 'N/A',
+				'Created At': case.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+				'Deleted At': case.deleted_at.strftime('%Y-%m-%d %H:%M:%S') if case.deleted_at else 'N/A',
+				'Deleted By': case.deleted_by_id or 'N/A'
+			})
+		
+		# Permanently delete the case
+		db.session.delete(case)
+		db.session.commit()
+		
+		# Log activity
+		user = get_current_user()
+		if user:
+			ActivityLog.log_activity(
+				user_id=user.id,
+				action="Case Permanently Deleted",
+				description=f"Permanently deleted {case_type} case for {person_name} (CSV backup: {csv_filename})"
+			)
+		
+		return jsonify({
+			'success': True,
+			'message': f'Case permanently deleted. CSV backup saved: {csv_filename}'
+		})
+		
+	except Exception as e:
+		db.session.rollback()
+		print(f"Error permanently deleting case: {e}")
+		import traceback
+		traceback.print_exc()
+		return jsonify({'error': 'Error permanently deleting case'}), 500
 
 
 @bp.post('/api/restore-person')

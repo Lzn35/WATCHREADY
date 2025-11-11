@@ -108,6 +108,9 @@ select.custom-select option:checked {
 		
 		<!-- Action Buttons -->
 		<div class="d-flex align-items-end" style="gap: 10px;">
+			<a href="{{ url_for('cases.archive_cases', case_type='major', entity_type='staff') }}" class="btn btn-secondary">
+				<i class="bi bi-archive" style="margin-right: 5px;"></i>View Archive
+			</a>
 			<button class="btn btn-success" onclick="generateReport()">
 				<i class="bi bi-file-earmark-pdf" style="margin-right: 5px;"></i>Generate Report
 			</button>

@@ -358,6 +358,79 @@ class PurgeService:
 		# Sort by date (newest first)
 		archives.sort(key=lambda x: x['date'], reverse=True)
 		return archives
+	
+	@staticmethod
+	def purge_old_cases_automatic(days_old=60):
+		"""
+		Automatically purge cases older than specified days with CSV backup
+		This should be called daily by a scheduled task or cron job
+		
+		Args:
+			days_old: Number of days after deletion before permanent purge (default: 60)
+		
+		Returns:
+			dict: Result with count and CSV path
+		"""
+		from ..models import Case
+		
+		# Get cases eligible for purging
+		cases_to_purge = Case.get_cases_for_purge(days_old=days_old)
+		
+		if not cases_to_purge:
+			return {
+				'count': 0,
+				'message': 'No cases to purge',
+				'csv_path': None
+			}
+		
+		# Create archive directory
+		archive_dir = os.path.join(PurgeService.ARCHIVE_BASE_DIR, 'automatic_purge')
+		os.makedirs(archive_dir, exist_ok=True)
+		
+		# Generate CSV backup
+		csv_filename = f'auto_purge_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+		csv_path = os.path.join(archive_dir, csv_filename)
+		
+		# Write to CSV
+		with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+			fieldnames = ['Case ID', 'Person Name', 'Role', 'Program/Dept', 'Section',
+						 'Case Type', 'Description', 'Date Reported', 'Status', 'Remarks',
+						 'Created At', 'Deleted At', 'Days Since Deletion']
+			writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+			
+			writer.writeheader()
+			for case in cases_to_purge:
+				days_since_deletion = (datetime.utcnow() - case.deleted_at).days if case.deleted_at else 0
+				
+				writer.writerow({
+					'Case ID': case.id,
+					'Person Name': case.person.full_name if case.person else 'Unknown',
+					'Role': case.person.role if case.person else 'Unknown',
+					'Program/Dept': case.person.program_or_dept if case.person else 'N/A',
+					'Section': case.person.section if case.person else 'N/A',
+					'Case Type': case.case_type,
+					'Description': case.description or 'N/A',
+					'Date Reported': case.date_reported.strftime('%Y-%m-%d'),
+					'Status': case.status,
+					'Remarks': case.remarks or 'N/A',
+					'Created At': case.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+					'Deleted At': case.deleted_at.strftime('%Y-%m-%d %H:%M:%S') if case.deleted_at else 'N/A',
+					'Days Since Deletion': days_since_deletion
+				})
+		
+		# Permanently delete the cases
+		count = len(cases_to_purge)
+		for case in cases_to_purge:
+			db.session.delete(case)
+		
+		db.session.commit()
+		
+		return {
+			'count': count,
+			'message': f'Automatically purged {count} case(s) older than {days_old} days',
+			'csv_path': csv_path
+		}
+
 
 
 
