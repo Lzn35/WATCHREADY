@@ -920,27 +920,24 @@ function loadPersonsWithCases(page = 1) {
 }
 
 // Filter table based on search term
+// SCALABILITY FIX: Search queries backend (ALL records), not just current page!
 function filterTable(searchTerm) {
-	console.log('filterTable called with:', searchTerm);
-	console.log('originalPersonsData:', originalPersonsData);
-	
-	if (!searchTerm) {
-		// If no search term, show all data
-		updatePersonsTable(originalPersonsData);
+	if (!searchTerm || searchTerm.trim() === '') {
+		loadPersonsWithCases(1);
 		return;
 	}
 	
-	// Filter data based on faculty name - only among those with major cases
-	var filteredData = originalPersonsData.filter(function(person) {
-		var hasMajorCases = person.major_count > 0;
-		var nameMatches = person.full_name.toLowerCase().includes(searchTerm.toLowerCase());
-		var matches = hasMajorCases && nameMatches;
-		console.log('Checking:', person.full_name, 'against', searchTerm, 'hasMajorCases:', hasMajorCases, 'nameMatches:', nameMatches, 'total matches:', matches);
-		return matches;
-	});
-	
-	console.log('Filtered data:', filteredData);
-	updatePersonsTable(filteredData);
+	console.log('🔍 Backend search for:', searchTerm);
+	$.get('{{ url_for("cases.get_persons_api") }}?role=faculty&search=' + encodeURIComponent(searchTerm))
+		.done(function(response) {
+			var data = response.data || response;
+			var filteredData = data.filter(person => person.major_count > 0);
+			console.log('✅ Found ' + filteredData.length + ' results');
+			updatePersonsTable(filteredData);
+		})
+		.fail(function() {
+			alert('Error searching');
+		});
 }
 
 function updatePersonsTable(persons) {

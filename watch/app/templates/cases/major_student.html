@@ -1142,27 +1142,35 @@ function loadPersonsWithCases(page = 1) {
 }
 
 // Filter table based on search term
+// SCALABILITY FIX: Search queries backend (ALL records), not just current page!
 function filterTable(searchTerm) {
 	console.log('filterTable called with:', searchTerm);
-	console.log('originalPersonsData:', originalPersonsData);
 	
-	if (!searchTerm) {
-		// If no search term, show all data
-		updatePersonsTable(originalPersonsData);
+	if (!searchTerm || searchTerm.trim() === '') {
+		// If no search term, load first page normally
+		loadPersonsWithCases(1);
 		return;
 	}
 	
-	// Filter data based on student name - only among those with major cases
-	var filteredData = originalPersonsData.filter(function(person) {
-		var hasMajorCases = person.major_count > 0;
-		var nameMatches = person.full_name.toLowerCase().includes(searchTerm.toLowerCase());
-		var matches = hasMajorCases && nameMatches;
-		console.log('Checking:', person.full_name, 'against', searchTerm, 'hasMajorCases:', hasMajorCases, 'nameMatches:', nameMatches, 'total matches:', matches);
-		return matches;
-	});
-	
-	console.log('Filtered data:', filteredData);
-	updatePersonsTable(filteredData);
+	// BACKEND SEARCH: Query all 20k+ records!
+	console.log('🔍 Searching backend for:', searchTerm);
+	$.get('{{ url_for("cases.get_persons_api") }}?role=student&search=' + encodeURIComponent(searchTerm) + '&_=' + Date.now())
+		.done(function(response) {
+			var data = response.data || response;
+			console.log('✅ Backend search returned ' + data.length + ' results');
+			
+			// Filter to show only those with major cases (frontend filter for display)
+			var filteredData = data.filter(function(person) {
+				return person.major_count > 0;
+			});
+			
+			console.log('📊 After major cases filter: ' + filteredData.length + ' results');
+			updatePersonsTable(filteredData);
+		})
+		.fail(function() {
+			console.error('❌ Search failed');
+			alert('Error searching persons');
+		});
 }
 
 function updatePersonsTable(persons) {
