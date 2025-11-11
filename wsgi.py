@@ -91,12 +91,19 @@ try:
                     # Foreign key columns (Panel Recommendations)
                     "ALTER TABLE persons ADD COLUMN IF NOT EXISTS section_id INTEGER",
                     "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS room_id INTEGER",
-                    # Indexes
+                    # Indexes for soft delete
                     "CREATE INDEX IF NOT EXISTS idx_cases_is_deleted ON cases(is_deleted)",
                     "CREATE INDEX IF NOT EXISTS idx_persons_is_deleted ON persons(is_deleted)",
                     "CREATE INDEX IF NOT EXISTS idx_cases_person_id ON cases(person_id)",
                     "CREATE INDEX IF NOT EXISTS idx_cases_case_type ON cases(case_type)",
                     "CREATE INDEX IF NOT EXISTS idx_persons_role ON persons(role)",
+                    # SCALABILITY: Performance indexes for large datasets
+                    "CREATE INDEX IF NOT EXISTS idx_cases_date_reported ON cases(date_reported)",
+                    "CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases(created_at)",
+                    "CREATE INDEX IF NOT EXISTS idx_cases_deleted_at ON cases(deleted_at)",
+                    "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)",
+                    "CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_checklist(date)",
+                    "CREATE INDEX IF NOT EXISTS idx_attendance_history_date ON attendance_history(date)",
                 ]
                 
                 for sql in migrations:
