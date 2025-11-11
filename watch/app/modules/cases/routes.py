@@ -1378,30 +1378,73 @@ def archive_cases(case_type, entity_type):
 	"""
 	from datetime import datetime, timedelta, date
 	
-	# Get all soft-deleted cases for this case_type and entity_type
-	archived_cases = Case.query.join(Person).filter(
-		Case.is_deleted == True,
-		Case.case_type == case_type,
-		Person.role == entity_type
-	).order_by(Case.deleted_at.desc()).all()
-	
-	# Calculate days remaining for each case
-	archived_cases_data = []
-	for case in archived_cases:
-		days_since_deletion = (datetime.utcnow() - case.deleted_at).days if case.deleted_at else 0
-		days_remaining = max(0, 60 - days_since_deletion)
+	try:
+		print(f"🔍 Archive Request: case_type={case_type}, entity_type={entity_type}")
 		
-		archived_cases_data.append({
-			'case': case,
-			'days_remaining': days_remaining,
-			'will_be_purged': case.deleted_at + timedelta(days=60) if case.deleted_at else None
-		})
+		# Get all soft-deleted cases for this case_type and entity_type
+		# IMPORTANT: Use LEFT JOIN to include cases even if person is also deleted
+		# Filter by person_id relationship instead of direct JOIN
+		archived_cases = Case.query.filter(
+			Case.is_deleted == True,
+			Case.case_type == case_type,
+			Case.person_id.isnot(None)  # Ensure case has a person
+		).all()
+		
+		print(f"📊 Found {len(archived_cases)} deleted cases of type '{case_type}'")
+		
+		# Filter by entity type (person role) manually since person might also be deleted
+		filtered_cases = []
+		for case in archived_cases:
+			try:
+				# Access person relationship (works even if person is deleted)
+				if case.person and case.person.role == entity_type:
+					filtered_cases.append(case)
+					print(f"  ✅ Case #{case.id}: {case.person.full_name} - {case.person.role}")
+				elif case.person:
+					print(f"  ⏭️ Case #{case.id}: Skipped (role={case.person.role}, wanted={entity_type})")
+				else:
+					print(f"  ⚠️ Case #{case.id}: No person found!")
+			except Exception as case_error:
+				print(f"  ❌ Case #{case.id}: Error accessing person - {case_error}")
+				continue
+		
+		print(f"📋 Filtered to {len(filtered_cases)} cases with role '{entity_type}'")
+		
+		# Sort by deletion date (most recent first)
+		filtered_cases.sort(key=lambda c: c.deleted_at if c.deleted_at else datetime.min, reverse=True)
+		
+		# Calculate days remaining for each case
+		archived_cases_data = []
+		for case in filtered_cases:
+			try:
+				days_since_deletion = (datetime.utcnow() - case.deleted_at).days if case.deleted_at else 0
+				days_remaining = max(0, 60 - days_since_deletion)
+				
+				archived_cases_data.append({
+					'case': case,
+					'days_remaining': days_remaining,
+					'will_be_purged': case.deleted_at + timedelta(days=60) if case.deleted_at else None
+				})
+			except Exception as calc_error:
+				print(f"❌ Error calculating days for case #{case.id}: {calc_error}")
+				continue
+		
+		print(f"✅ Returning {len(archived_cases_data)} cases to template")
+		
+		return render_template('cases/archive.html',
+							   case_type=case_type,
+							   entity_type=entity_type,
+							   archived_cases=archived_cases_data,
+							   today=date.today())
 	
-	return render_template('cases/archive.html',
-						   case_type=case_type,
-						   entity_type=entity_type,
-						   archived_cases=archived_cases_data,
-						   today=date.today())
+	except Exception as e:
+		print(f"❌ ARCHIVE ERROR: {e}")
+		import traceback
+		traceback.print_exc()
+		
+		# Return error page with helpful message
+		return render_template('errors/500.html', 
+							   error_message=f"Error loading archive: {str(e)}"), 500
 
 
 @bp.post('/api/case/<int:case_id>/restore')
