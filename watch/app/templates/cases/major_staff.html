@@ -902,11 +902,13 @@ function showNotification(type, title, message) {
 var originalPersonsData = [];
 
 // Load persons with case counts
-function loadPersonsWithCases() {
-	$.get('{{ url_for("cases.get_persons_api") }}?role=staff&_=' + Date.now())
-		.done(function(data) {
+function loadPersonsWithCases(page = 1) {
+	$.get('{{ url_for("cases.get_persons_api") }}?role=staff&page=' + page + '&per_page=50&_=' + Date.now())
+		.done(function(response) {
+			var data = response.data || response;
 			originalPersonsData = data;
 			updatePersonsTable(data);
+			if (response.pagination) console.log('📊 Page ' + response.pagination.page + '/' + response.pagination.pages);
 		})
 		.fail(function() {
 			alert('Error loading persons data');

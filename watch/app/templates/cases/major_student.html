@@ -1116,11 +1116,25 @@ function generateReport() {
 // Store original data for filtering
 var originalPersonsData = [];
 
-function loadPersonsWithCases() {
-	$.get('{{ url_for("cases.get_persons_api") }}?role=student&_=' + Date.now())
-		.done(function(data) {
+var currentPage = 1;
+var totalPages = 1;
+
+function loadPersonsWithCases(page = 1) {
+	$.get('{{ url_for("cases.get_persons_api") }}?role=student&page=' + page + '&per_page=50&_=' + Date.now())
+		.done(function(response) {
+			// Handle paginated response
+			var data = response.data || response; // Backward compatibility
+			var pagination = response.pagination || null;
+			
 			originalPersonsData = data;
 			updatePersonsTable(data);
+			
+			// Update pagination info if available
+			if (pagination) {
+				currentPage = pagination.page;
+				totalPages = pagination.pages;
+				console.log('📊 Loaded page ' + currentPage + ' of ' + totalPages + ' (' + pagination.total + ' total persons)');
+			}
 		})
 		.fail(function() {
 			alert('Error loading persons data');

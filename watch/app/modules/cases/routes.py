@@ -850,9 +850,23 @@ def major_ocr_extract(entity_type):
 @bp.get('/api/persons')
 @login_required
 def get_persons_api():
-	"""API endpoint to get persons with case counts (for AJAX) - excludes deleted persons and cases"""
+	"""API endpoint to get persons with case counts (for AJAX) - excludes deleted persons and cases
+	
+	SCALABILITY: Now supports pagination for large datasets!
+	Query params:
+	- page: Page number (default: 1)
+	- per_page: Items per page (default: 50, max: 200)
+	- search: Search term
+	- role: Filter by role
+	"""
 	search_term = request.args.get('search', '').strip()
 	role_filter = request.args.get('role', '').strip()
+	
+	# Pagination parameters
+	page = request.args.get('page', 1, type=int)
+	per_page = min(request.args.get('per_page', 50, type=int), 200)  # Max 200 per page
+	
+	print(f"📊 Persons API: page={page}, per_page={per_page}, role={role_filter}, search={search_term}")
 	
 	if search_term:
 		# search_persons now filters deleted by default
@@ -863,6 +877,14 @@ def get_persons_api():
 			minor_count = Case.query.filter_by(person_id=person.id, case_type='minor', is_deleted=False).count()
 			major_count = Case.query.filter_by(person_id=person.id, case_type='major', is_deleted=False).count()
 			persons_with_counts.append((person, minor_count, major_count))
+		
+		# Paginate search results manually
+		start_idx = (page - 1) * per_page
+		end_idx = start_idx + per_page
+		paginated_persons = persons_with_counts[start_idx:end_idx]
+		total_count = len(persons_with_counts)
+		has_next = end_idx < total_count
+		has_prev = page > 1
 	else:
 		# Apply role filter even when no search term
 		# get_persons_with_case_counts now filters deleted by default
@@ -870,10 +892,20 @@ def get_persons_api():
 			persons_with_counts = Person.get_persons_with_case_counts(role_filter=role_filter)
 		else:
 			persons_with_counts = Person.get_persons_with_case_counts()
+		
+		# Paginate results manually
+		start_idx = (page - 1) * per_page
+		end_idx = start_idx + per_page
+		paginated_persons = persons_with_counts[start_idx:end_idx]
+		total_count = len(persons_with_counts)
+		has_next = end_idx < total_count
+		has_prev = page > 1
+	
+	print(f"✅ Returning {len(paginated_persons)} of {total_count} persons (page {page})")
 	
 	# Convert to JSON-serializable format
 	result = []
-	for person_data in persons_with_counts:
+	for person_data in paginated_persons:
 		person, minor_count, major_count = person_data
 		
 		# Get latest major case info for date display (exclude deleted)
@@ -901,7 +933,18 @@ def get_persons_api():
 			'attachment_case_id': attachment_case_id
 		})
 	
-	return jsonify(result)
+	# Return with pagination metadata
+	return jsonify({
+		'data': result,
+		'pagination': {
+			'page': page,
+			'per_page': per_page,
+			'total': total_count,
+			'pages': (total_count + per_page - 1) // per_page,  # Ceiling division
+			'has_next': has_next,
+			'has_prev': has_prev
+		}
+	})
 
 
 @bp.get('/api/person/<int:person_id>/cases')
