@@ -1,19 +1,41 @@
 """
-WATCH System - Stress Test Data Generator
+WATCH System - Stress Test Data Generator for Railway PostgreSQL
 
 Generates realistic test data for scalability testing:
 - 1,200 Schedules
-- 200 Attendance records per day (Monday-Saturday)
-- 120,000 Cases (20k per entity type, both minor and major)
-- Attachments for major cases
+- 6,000 Attendance records (200/day × 30 days)
+- 60,000 Persons (40k students, 10k faculty, 10k staff)
+- 120,000 Cases (20k minor + 20k major per role)
+- 48,000 Attachments (80% of major cases)
+- 500 Appointments
 
-Run this script LOCALLY (not on Railway!) to populate your local database.
-Then you can test performance with large datasets.
+CONNECTS DIRECTLY TO RAILWAY POSTGRESQL!
+Panel and beneficiaries can test the LIVE system with large data!
 
-USAGE:
-    python generate_stress_test_data.py
+SETUP STEPS:
 
-WARNING: This will take 10-30 minutes to generate all data!
+1. Get Railway DATABASE_URL:
+   - Go to Railway Dashboard → Your Service
+   - Click "Variables" tab
+   - Copy the DATABASE_URL value (starts with postgresql://)
+
+2. Set environment variable (PowerShell):
+   $env:DATABASE_URL="paste_your_database_url_here"
+
+3. Run the script:
+   python generate_stress_test_data.py
+
+4. Type 'GENERATE' to confirm
+
+5. Wait 10-30 minutes (shows progress bars!)
+
+6. Done! Data is now LIVE on sti-watch.com!
+
+WARNING: 
+- Takes 10-30 minutes to complete
+- Runs from your computer, writes to Railway database
+- No Railway timeout issues (runs locally!)
+- Database size will increase by 500MB-1GB
 """
 
 import os
@@ -135,23 +157,52 @@ def main():
     print("🚀 WATCH SYSTEM - STRESS TEST DATA GENERATOR")
     print("=" * 80)
     print()
-    print("⚠️  WARNING: This will generate A LOT of data!")
+    
+    # Check if DATABASE_URL is set
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print("❌ ERROR: DATABASE_URL environment variable not set!")
+        print()
+        print("📝 To set it (PowerShell):")
+        print('   $env:DATABASE_URL="postgresql://user:pass@host:5432/railway"')
+        print()
+        print("🔍 Get your Railway DATABASE_URL:")
+        print("   1. Go to Railway Dashboard")
+        print("   2. Click your service")
+        print("   3. Go to 'Variables' tab")
+        print("   4. Copy the DATABASE_URL value")
+        print()
+        return
+    
+    print("✅ DATABASE_URL detected!")
+    print(f"   Target: {database_url.split('@')[1] if '@' in database_url else 'Unknown'}")
+    print()
+    print("⚠️  WARNING: This will generate data DIRECTLY on Railway PostgreSQL!")
     print("   - 1,200 Schedules")
-    print("   - ~50,000 Attendance records")
+    print("   - ~6,000 Attendance records")
+    print("   - 60,000 Persons (40k students, 10k faculty, 10k staff)")
     print("   - 120,000 Cases (20k × 6 types)")
-    print("   - Attachments for major cases")
+    print("   - ~48,000 Attachments (80% of major cases)")
+    print("   - 500 Appointments")
     print()
     print("📊 Estimated generation time: 10-30 minutes")
-    print("💾 Estimated database size: 500MB-2GB (with BLOBs)")
+    print("💾 Estimated database size increase: +500MB-1GB")
+    print()
+    print("⚠️  This will run from YOUR computer but write to RAILWAY database!")
+    print("   Panel and beneficiaries will see this data LIVE on sti-watch.com!")
     print()
     
-    response = input("Continue? (yes/no): ").strip().lower()
-    if response != 'yes':
+    response = input("Continue? Type 'GENERATE' to confirm: ").strip()
+    if response != 'GENERATE':
         print("❌ Aborted by user")
         return
     
     print()
-    print("🔧 Initializing Flask app...")
+    print("🔧 Initializing Flask app with Railway PostgreSQL...")
+    
+    # Force use of DATABASE_URL from environment
+    os.environ['DATABASE_URL'] = database_url
+    
     app = create_app()
     
     with app.app_context():
