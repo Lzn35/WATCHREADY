@@ -1386,7 +1386,7 @@ def archive_cases(case_type, entity_type):
 		# Filter by person_id relationship instead of direct JOIN
 		archived_cases = Case.query.filter(
 			Case.is_deleted == True,
-			Case.case_type == case_type,
+			Case.case_type == case_type,  # STRICT: Only this case type!
 			Case.person_id.isnot(None)  # Ensure case has a person
 		).all()
 		
@@ -1397,9 +1397,14 @@ def archive_cases(case_type, entity_type):
 		for case in archived_cases:
 			try:
 				# Access person relationship (works even if person is deleted)
+				# STRICT CHECK: Verify case_type matches (double-check for data integrity)
+				if case.case_type != case_type:
+					print(f"  ⚠️ Case #{case.id}: WRONG TYPE! case.case_type='{case.case_type}', wanted='{case_type}' - SKIPPING!")
+					continue
+				
 				if case.person and case.person.role == entity_type:
 					filtered_cases.append(case)
-					print(f"  ✅ Case #{case.id}: {case.person.full_name} - {case.person.role}")
+					print(f"  ✅ Case #{case.id}: {case.person.full_name} - type={case.case_type}, role={case.person.role}, deleted={case.is_deleted}")
 				elif case.person:
 					print(f"  ⏭️ Case #{case.id}: Skipped (role={case.person.role}, wanted={entity_type})")
 				else:
@@ -1408,7 +1413,7 @@ def archive_cases(case_type, entity_type):
 				print(f"  ❌ Case #{case.id}: Error accessing person - {case_error}")
 				continue
 		
-		print(f"📋 Filtered to {len(filtered_cases)} cases with role '{entity_type}'")
+		print(f"📋 Filtered to {len(filtered_cases)} cases with type '{case_type}' and role '{entity_type}'")
 		
 		# Sort by deletion date (most recent first)
 		filtered_cases.sort(key=lambda c: c.deleted_at if c.deleted_at else datetime.min, reverse=True)
