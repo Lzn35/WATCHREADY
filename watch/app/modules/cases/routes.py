@@ -15,6 +15,8 @@ from ...services.notification_service import NotificationService
 from . import bp
 from datetime import datetime, date
 import os
+import csv
+import io
 
 
 # Minor Cases Routes by Entity Type
@@ -1708,3 +1710,124 @@ def extract_ocr_data():
 	except Exception as e:
 		print(f"OCR extraction error: {str(e)}")
 		return jsonify({'error': 'Failed to extract data from OCR text'}), 500
+
+
+# ==================== CSV REPORT GENERATION ROUTES ====================
+
+@bp.get('/report/csv/<case_type>/<entity_type>')
+@login_required
+def generate_csv_report(case_type, entity_type):
+	"""
+	Generate CSV report for cases
+	Params:
+		case_type: 'minor' or 'major'
+		entity_type: 'student', 'faculty', or 'staff'
+	"""
+	try:
+		# Validate parameters
+		if case_type not in ['minor', 'major']:
+			return jsonify({'error': 'Invalid case type'}), 400
+		if entity_type not in ['student', 'faculty', 'staff']:
+			return jsonify({'error': 'Invalid entity type'}), 400
+		
+		# Get all persons with cases for this entity type
+		persons_with_counts = Person.get_persons_with_case_counts()
+		filtered_persons = [
+			(person, minor_count, major_count) 
+			for person, minor_count, major_count in persons_with_counts 
+			if person.role == entity_type
+		]
+		
+		# Create CSV in memory
+		output = io.StringIO()
+		writer = csv.writer(output)
+		
+		# Write headers based on entity type
+		if entity_type == 'student':
+			headers = ['Student Name', 'Program', 'Section', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+		elif entity_type == 'faculty':
+			headers = ['Faculty Name', 'Department', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+		else:  # staff
+			headers = ['Staff Name', 'Position', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+		
+		writer.writerow(headers)
+		
+		# Get cases for each person
+		case_count = 0
+		for person, minor_count, major_count in filtered_persons:
+			# Only process persons with cases of the requested type
+			target_count = minor_count if case_type == 'minor' else major_count
+			if target_count == 0:
+				continue
+			
+			# Get cases for this person (exclude deleted)
+			cases = Case.query.filter_by(
+				person_id=person.id,
+				case_type=case_type,
+				is_deleted=False
+			).order_by(Case.date_reported.desc()).all()
+			
+			# Write each case as a row
+			for case in cases:
+				case_count += 1
+				if entity_type == 'student':
+					row = [
+						person.full_name,
+						person.program_or_dept or 'N/A',
+						person.section or 'N/A',
+						case.date_reported.strftime('%Y-%m-%d'),
+						case.specific_offense or case.offense_type or 'N/A',
+						case.description or 'N/A',
+						case.status or 'N/A',
+						case.remarks or 'N/A',
+						case.created_at.strftime('%Y-%m-%d %H:%M:%S')
+					]
+				elif entity_type == 'faculty':
+					row = [
+						person.full_name,
+						person.program_or_dept or 'N/A',
+						case.date_reported.strftime('%Y-%m-%d'),
+						case.specific_offense or case.offense_type or 'N/A',
+						case.description or 'N/A',
+						case.status or 'N/A',
+						case.remarks or 'N/A',
+						case.created_at.strftime('%Y-%m-%d %H:%M:%S')
+					]
+				else:  # staff
+					row = [
+						person.full_name,
+						person.program_or_dept or 'N/A',
+						case.date_reported.strftime('%Y-%m-%d'),
+						case.specific_offense or case.offense_type or 'N/A',
+						case.description or 'N/A',
+						case.status or 'N/A',
+						case.remarks or 'N/A',
+						case.created_at.strftime('%Y-%m-%d %H:%M:%S')
+					]
+				writer.writerow(row)
+		
+		# Prepare file for download
+		output.seek(0)
+		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+		filename = f'{case_type}_cases_{entity_type}_{timestamp}.csv'
+		
+		# Convert to bytes for download
+		mem = io.BytesIO()
+		mem.write(output.getvalue().encode('utf-8-sig'))  # UTF-8 with BOM for Excel compatibility
+		mem.seek(0)
+		output.close()
+		
+		print(f"✅ Generated CSV report: {filename} with {case_count} cases")
+		
+		return send_file(
+			mem,
+			mimetype='text/csv',
+			as_attachment=True,
+			download_name=filename
+		)
+		
+	except Exception as e:
+		print(f"❌ CSV Report Generation Error: {str(e)}")
+		import traceback
+		traceback.print_exc()
+		return jsonify({'error': f'Failed to generate report: {str(e)}'}), 500
