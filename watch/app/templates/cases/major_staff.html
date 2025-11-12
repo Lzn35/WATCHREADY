@@ -381,13 +381,16 @@ select.custom-select option:checked {
 				</div>
 				<hr>
 				<h6><i class="bi bi-list-ul" style="margin-right: 5px;"></i>Major Cases</h6>
-				<div id="casesList">
-					<!-- Cases will be loaded here -->
-				</div>
+			<div id="casesList">
+				<!-- Cases will be loaded here -->
 			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-			</div>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-success" onclick="generatePersonReport($('#personInfo').data('person-id'), $('#personCasesModalLabel').text().replace('Major Cases for Staff Member', '').replace('Major Cases for ', ''))">
+				<i class="bi bi-file-earmark-pdf" style="margin-right: 5px;"></i>Generate Report
+			</button>
+			<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+		</div>
 		</div>
 	</div>
 </div>
@@ -1379,6 +1382,94 @@ function generateReport() {
 			}
 		}).fail(function() {
 			alert('Error loading case data for report');
+		});
+}
+
+// Generate Report for Specific Person
+function generatePersonReport(personId, personName) {
+	var today = new Date();
+	var reportContent = `
+		<html>
+		<head>
+			<title>Major Cases Report - ${personName}</title>
+			<style>
+				body { font-family: Arial, sans-serif; margin: 20px; }
+				.header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+				.person-info { background: #ffebee; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #d32f2f; }
+				table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+				th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+				th { background-color: #d32f2f; color: white; }
+				tr:nth-child(even) { background-color: #f2f2f2; }
+				.footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+			</style>
+		</head>
+		<body>
+			<div class="header">
+				<h1 style="color: #d32f2f;">Major Cases Report - Staff</h1>
+				<h2>${personName}</h2>
+				<p>Generated on: ${today.toLocaleDateString()} at ${today.toLocaleTimeString()}</p>
+			</div>
+	`;
+	
+	$.get('{{ url_for("cases.get_person_cases_api", person_id=0) }}'.replace('0', personId) + '?case_type=major')
+		.done(function(response) {
+			reportContent += `
+				<div class="person-info">
+					<strong>Name:</strong> ${response.person.full_name}<br>
+					<strong>Position:</strong> ${response.person.program_or_dept}<br>
+					<strong>Total Major Cases:</strong> ${response.cases.length}
+				</div>
+				
+				<h3>Case Details</h3>
+				<table>
+					<thead>
+						<tr>
+							<th>Date Reported</th>
+							<th>Specific Offense</th>
+							<th>Description</th>
+							<th>Status</th>
+							<th>Remarks</th>
+						</tr>
+					</thead>
+					<tbody>
+			`;
+			
+			if (response.cases && response.cases.length > 0) {
+				response.cases.forEach(function(case_item) {
+					reportContent += `
+						<tr>
+							<td>${case_item.date_reported}</td>
+							<td>${case_item.specific_offense || 'N/A'}</td>
+							<td>${case_item.description || 'N/A'}</td>
+							<td>${case_item.status}</td>
+							<td>${case_item.remarks || 'N/A'}</td>
+						</tr>
+					`;
+				});
+			} else {
+				reportContent += '<tr><td colspan="5" style="text-align: center;">No cases found</td></tr>';
+			}
+			
+			reportContent += `
+					</tbody>
+				</table>
+				<div class="footer">
+					<p>WATCH - Staff Discipline Management System</p>
+					<p style="color: #d32f2f; font-weight: bold;">MAJOR CASE - CONFIDENTIAL</p>
+					<p>This is a system-generated report</p>
+				</div>
+			</body>
+			</html>
+			`;
+			
+			var reportWindow = window.open('', '_blank');
+			reportWindow.document.write(reportContent);
+			reportWindow.document.close();
+			reportWindow.focus();
+			setTimeout(function() { reportWindow.print(); }, 500);
+		})
+		.fail(function() {
+			alert('Error loading case data for person report');
 		});
 }
 </script>
