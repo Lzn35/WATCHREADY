@@ -1744,11 +1744,11 @@ def generate_csv_report(case_type, entity_type):
 		
 		# Write headers based on entity type
 		if entity_type == 'student':
-			headers = ['Student Name', 'Program', 'Section', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+			headers = ['Student Name', 'Program', 'Section', 'Date Reported', 'Offense Category', 'Offense Type', 'Description', 'Status', 'Remarks', 'Date Created']
 		elif entity_type == 'faculty':
-			headers = ['Faculty Name', 'Department', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+			headers = ['Faculty Name', 'Department', 'Date Reported', 'Offense Category', 'Offense Type', 'Description', 'Status', 'Remarks', 'Date Created']
 		else:  # staff
-			headers = ['Staff Name', 'Position', 'Date Reported', 'Specific Offense', 'Description', 'Status', 'Remarks', 'Date Created']
+			headers = ['Staff Name', 'Position', 'Date Reported', 'Offense Category', 'Offense Type', 'Description', 'Status', 'Remarks', 'Date Created']
 		
 		writer.writerow(headers)
 		
@@ -1776,7 +1776,8 @@ def generate_csv_report(case_type, entity_type):
 						person.program_or_dept or 'N/A',
 						person.section or 'N/A',
 						case.date_reported.strftime('%Y-%m-%d'),
-						case.specific_offense or case.offense_type or 'N/A',
+						case.offense_category or 'N/A',
+						case.offense_type or 'N/A',
 						case.description or 'N/A',
 						case.status or 'N/A',
 						case.remarks or 'N/A',
@@ -1787,7 +1788,8 @@ def generate_csv_report(case_type, entity_type):
 						person.full_name,
 						person.program_or_dept or 'N/A',
 						case.date_reported.strftime('%Y-%m-%d'),
-						case.specific_offense or case.offense_type or 'N/A',
+						case.offense_category or 'N/A',
+						case.offense_type or 'N/A',
 						case.description or 'N/A',
 						case.status or 'N/A',
 						case.remarks or 'N/A',
@@ -1798,7 +1800,8 @@ def generate_csv_report(case_type, entity_type):
 						person.full_name,
 						person.program_or_dept or 'N/A',
 						case.date_reported.strftime('%Y-%m-%d'),
-						case.specific_offense or case.offense_type or 'N/A',
+						case.offense_category or 'N/A',
+						case.offense_type or 'N/A',
 						case.description or 'N/A',
 						case.status or 'N/A',
 						case.remarks or 'N/A',
