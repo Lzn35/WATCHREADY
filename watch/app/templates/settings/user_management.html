@@ -372,12 +372,6 @@ $(document).ready(function() {
 		});
 	});
 	
-	// Test button click
-	$(document).on('click', '.edit-user-btn, .delete-user-btn', function() {
-		console.log('OBJECTIVE: Button clicked:', $(this).attr('class'));
-		showNotification('Button clicked! JavaScript is working!', 'info');
-	});
-	
 	// Toggle User Status functionality
 	$(document).on('click', '.toggle-status-btn', function() {
 		const userId = $(this).data('user-id');
