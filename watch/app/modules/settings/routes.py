@@ -417,7 +417,7 @@ def delete_user(user_id):
 			log_admin_protection('DELETE', user.id, user.username, 'Administrator role detected')
 			return jsonify({'success': False, 'error': 'Cannot delete administrator accounts'}), 403
 		
-		# IMPORTANT: Handle foreign key constraints before deletion
+		# IMPORTANT: Handle ALL foreign key constraints before deletion
 		# Set user_id to NULL in audit_logs to preserve audit history
 		db.session.execute(
 			db.text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :user_id"),
@@ -427,6 +427,12 @@ def delete_user(user_id):
 		# Delete activity logs for this user (these are user-specific and not needed after deletion)
 		db.session.execute(
 			db.text("DELETE FROM activity_logs WHERE user_id = :user_id"),
+			{"user_id": user_id}
+		)
+		
+		# Set user_id to NULL in notifications table (preserve notification history)
+		db.session.execute(
+			db.text("UPDATE notifications SET user_id = NULL WHERE user_id = :user_id"),
 			{"user_id": user_id}
 		)
 		
