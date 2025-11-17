@@ -72,9 +72,14 @@
 				<strong>🎯 Purpose:</strong> Demonstrate pagination and search with large dataset
 			</div>
 			
-			<button id="generateBtn" class="btn btn-primary btn-lg" onclick="generateTestData()">
-				<i class="bi bi-play-fill"></i> Generate Test Data
-			</button>
+			<div class="d-flex gap-2">
+				<button id="generateBtn" class="btn btn-primary btn-lg" onclick="generateTestData()">
+					<i class="bi bi-play-fill"></i> Generate Test Data
+				</button>
+				<button id="clearBtn" class="btn btn-danger btn-lg" onclick="clearTestData()">
+					<i class="bi bi-trash-fill"></i> Clear All Test Data
+				</button>
+			</div>
 			
 			<div id="progressContainer" class="mt-4" style="display: none;">
 				<h5>Generating Data...</h5>
@@ -207,6 +212,115 @@ function generateTestData() {
 		
 		btn.disabled = false;
 		btn.innerHTML = '<i class="bi bi-play-fill"></i> Retry Generation';
+	});
+}
+
+function clearTestData() {
+	if (!confirm('⚠️ WARNING: This will delete ALL test data!\n\n' +
+		'This includes:\n' +
+		'• All persons with names ending in numbers\n' +
+		'• All cases linked to test persons\n' +
+		'• All appointments with @example.com emails\n' +
+		'• All test rooms, sections, schedules, and attendance records\n\n' +
+		'This action CANNOT be undone!\n\n' +
+		'Are you absolutely sure you want to proceed?')) {
+		return;
+	}
+	
+	// Double confirmation
+	if (!confirm('⚠️ FINAL CONFIRMATION ⚠️\n\n' +
+		'You are about to permanently delete all test data.\n' +
+		'This will significantly reduce your database size.\n\n' +
+		'Click OK to proceed with deletion.')) {
+		return;
+	}
+	
+	// Disable button and show progress
+	const btn = document.getElementById('clearBtn');
+	const generateBtn = document.getElementById('generateBtn');
+	btn.disabled = true;
+	generateBtn.disabled = true;
+	btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Clearing...';
+	
+	document.getElementById('progressContainer').style.display = 'block';
+	document.getElementById('resultContainer').style.display = 'none';
+	
+	// Update progress UI
+	document.getElementById('progressBar').style.width = '50%';
+	document.getElementById('progressText').innerText = '50%';
+	document.getElementById('statusText').innerText = 'Deleting test data...';
+	
+	// Make API call
+	fetch('{{ url_for("settings.clear_test_data") }}', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRFToken': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		document.getElementById('progressBar').style.width = '100%';
+		document.getElementById('progressText').innerText = '100%';
+		document.getElementById('statusText').innerText = 'Complete!';
+		
+		if (data.success) {
+			document.getElementById('resultContainer').innerHTML = `
+				<div class="alert alert-success">
+					<h5><i class="bi bi-check-circle"></i> Test Data Cleared Successfully!</h5>
+					<p><strong>Deleted:</strong></p>
+					<ul>
+						<li>Cases: ${data.deleted.cases}</li>
+						<li>Persons: ${data.deleted.persons}</li>
+						<li>Appointments: ${data.deleted.appointments}</li>
+						<li>Attendance History: ${data.deleted.attendance_history}</li>
+						<li>Attendance Checklist: ${data.deleted.attendance_checklist}</li>
+						<li>Schedules: ${data.deleted.schedules}</li>
+						<li>Sections: ${data.deleted.sections}</li>
+						<li>Rooms: ${data.deleted.rooms}</li>
+					</ul>
+					<p><strong>Remaining Database Totals:</strong></p>
+					<ul>
+						<li>Persons: ${data.totals.persons}</li>
+						<li>Cases: ${data.totals.cases}</li>
+						<li>Schedules: ${data.totals.schedules}</li>
+						<li>Attendance: ${data.totals.attendance}</li>
+						<li>Appointments: ${data.totals.appointments}</li>
+					</ul>
+				</div>
+			`;
+			document.getElementById('resultContainer').style.display = 'block';
+			
+			// Reload page after 2 seconds to show updated stats
+			setTimeout(() => location.reload(), 2000);
+		} else {
+			document.getElementById('resultContainer').innerHTML = `
+				<div class="alert alert-danger">
+					<h5><i class="bi bi-x-circle"></i> Clear Failed</h5>
+					<p>Error: ${data.error}</p>
+				</div>
+			`;
+			document.getElementById('resultContainer').style.display = 'block';
+			
+			btn.disabled = false;
+			generateBtn.disabled = false;
+			btn.innerHTML = '<i class="bi bi-trash-fill"></i> Clear All Test Data';
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		
+		document.getElementById('resultContainer').innerHTML = `
+			<div class="alert alert-danger">
+				<h5><i class="bi bi-x-circle"></i> Network Error</h5>
+				<p>Failed to clear test data. Please try again.</p>
+			</div>
+		`;
+		document.getElementById('resultContainer').style.display = 'block';
+		
+		btn.disabled = false;
+		generateBtn.disabled = false;
+		btn.innerHTML = '<i class="bi bi-trash-fill"></i> Clear All Test Data';
 	});
 }
 </script>
