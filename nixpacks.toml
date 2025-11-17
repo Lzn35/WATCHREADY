@@ -8,5 +8,5 @@ cmds = [
 ]
 
 [start]
-cmd = "gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 wsgi:app"
+cmd = "gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 300 --preload wsgi:app"
 

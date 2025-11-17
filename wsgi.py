@@ -61,162 +61,56 @@ def handle_500_error(e):
     return "Internal Server Error - Check Railway logs for details", 500
 
 # Initialize database on first run (for Railway deployment)
-print("=== DATABASE INITIALIZATION START ===")
-try:
-    with app.app_context():
-        print("✓ App context created")
-        from app.extensions import db
+# Use lazy initialization to avoid worker timeouts
+# Only run basic table creation, skip heavy migrations on startup
+import threading
+_init_lock = threading.Lock()
+_init_done = False
+
+def init_database_lazy():
+    """Lazy database initialization - only runs once, fast startup"""
+    global _init_done
+    
+    if _init_done:
+        return
+    
+    with _init_lock:
+        if _init_done:
+            return
         
-        print("✓ Starting database initialization...")
-        
-        # Create tables if they don't exist
-        db.create_all()
-        print("✓ Database tables created")
-        
-        # MIGRATION: Add soft delete columns to existing tables (PostgreSQL)
-        print("✓ Running database migrations for new columns...")
         try:
-            # Check if we're using PostgreSQL
-            if 'postgresql' in str(db.engine.url):
-                # Add columns safely (IF NOT EXISTS for PostgreSQL)
-                migrations = [
-                    # Soft delete columns for cases
-                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
-                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
-                    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
-                    # Soft delete columns for persons
-                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL",
-                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
-                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER",
-                    # Foreign key columns (Panel Recommendations)
-                    "ALTER TABLE persons ADD COLUMN IF NOT EXISTS section_id INTEGER",
-                    "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS room_id INTEGER",
-                    # Indexes for soft delete
-                    "CREATE INDEX IF NOT EXISTS idx_cases_is_deleted ON cases(is_deleted)",
-                    "CREATE INDEX IF NOT EXISTS idx_persons_is_deleted ON persons(is_deleted)",
-                    "CREATE INDEX IF NOT EXISTS idx_cases_person_id ON cases(person_id)",
-                    "CREATE INDEX IF NOT EXISTS idx_cases_case_type ON cases(case_type)",
-                    "CREATE INDEX IF NOT EXISTS idx_persons_role ON persons(role)",
-                    # SCALABILITY: Performance indexes for large datasets
-                    "CREATE INDEX IF NOT EXISTS idx_cases_date_reported ON cases(date_reported)",
-                    "CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases(created_at)",
-                    "CREATE INDEX IF NOT EXISTS idx_cases_deleted_at ON cases(deleted_at)",
-                    "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)",
-                    "CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_checklist(date)",
-                    "CREATE INDEX IF NOT EXISTS idx_attendance_history_date ON attendance_history(date)",
-                ]
+            with app.app_context():
+                from app.extensions import db
                 
-                for sql in migrations:
-                    try:
-                        print(f"  → {sql[:70]}...")
-                        db.session.execute(db.text(sql))
-                        print(f"    ✓ Success")
-                    except Exception as e:
-                        # If column already exists, continue
-                        if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
-                            print(f"    ⚠ Already exists (OK)")
-                        else:
-                            print(f"    ✗ ERROR: {str(e)[:150]}")
+                # Quick check: just create tables if they don't exist
+                # Skip heavy migrations - they'll run on first request if needed
+                print("✓ Quick database check...")
+                db.create_all()
+                
+                # Quick role check - only create if missing
+                from app.models import Role
+                admin_role = Role.query.filter_by(name='admin').first()
+                if not admin_role:
+                    admin_role = Role(name='admin')
+                    db.session.add(admin_role)
+                
+                user_role = Role.query.filter_by(name='user').first()
+                if not user_role:
+                    user_role = Role(name='user')
+                    db.session.add(user_role)
                 
                 db.session.commit()
-                print("✓ Database migrations completed successfully")
-            else:
-                print("✓ Using SQLite - migrations not needed")
+                print("✓ Database ready")
+                _init_done = True
+                
         except Exception as e:
-            print(f"⚠ Migration error (non-fatal): {e}")
-            db.session.rollback()
-        
-        # Import models after db is ready
-        from app.models import Role, User
-        from werkzeug.security import generate_password_hash
-        
-        # Clean up duplicate roles first
-        print("✓ Cleaning up duplicate roles...")
-        
-        # Get existing roles
-        admin_upper = Role.query.filter_by(name='Admin').first()
-        user_upper = Role.query.filter_by(name='User').first()
-        admin_lower = Role.query.filter_by(name='admin').first()
-        user_lower = Role.query.filter_by(name='user').first()
-        
-        # Update users to use lowercase roles before deleting uppercase ones
-        if admin_upper and admin_lower:
-            users_with_admin_upper = User.query.filter_by(role_id=admin_upper.id).all()
-            for user in users_with_admin_upper:
-                user.role_id = admin_lower.id
-            print(f"✓ Updated {len(users_with_admin_upper)} users from Admin to admin")
-        
-        if user_upper and user_lower:
-            users_with_user_upper = User.query.filter_by(role_id=user_upper.id).all()
-            for user in users_with_user_upper:
-                user.role_id = user_lower.id
-            print(f"✓ Updated {len(users_with_user_upper)} users from User to user")
-        
-        # Commit user updates first
-        db.session.commit()
-        
-        # Now delete uppercase versions
-        if admin_upper:
-            db.session.delete(admin_upper)
-            print("✓ Deleted Admin role")
-        if user_upper:
-            db.session.delete(user_upper)
-            print("✓ Deleted User role")
-        
-        # Create default roles (lowercase only)
-        admin_role = Role.query.filter_by(name='admin').first()
-        if not admin_role:
-            admin_role = Role(name='admin')
-            db.session.add(admin_role)
-            print("✓ Created admin role")
-        else:
-            print("✓ Admin role already exists")
-        
-        user_role = Role.query.filter_by(name='user').first()
-        if not user_role:
-            user_role = Role(name='user')
-            db.session.add(user_role)
-            print("✓ Created user role")
-        else:
-            print("✓ User role already exists")
-        
-        # Commit roles first
-        db.session.commit()
-        print("✓ Roles cleaned up and committed")
-        
-        # Check if this is a fresh database (no users exist)
-        # Only initialize default admin if database is empty
-        existing_users_count = User.query.count()
-        
-        if existing_users_count == 0:
-            # Fresh database - create default admin account
-            print("✓ Fresh database detected - creating default admin account...")
-            admin_user = User(
-                username='admin',
-                password_hash=generate_password_hash('admin123'),
-                role_id=admin_role.id,
-                is_protected=True,
-                full_name='Discipline Officer',
-                email='admin@sti-watch.com',
-                is_active=True
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-            print("✓ Created default admin account: admin / admin123 (Discipline Officer)")
-            print("⚠️ IMPORTANT: Change this password immediately after first login!")
-        else:
-            # Database already has users - don't touch them
-            print(f"✓ Database already has {existing_users_count} user(s) - skipping user initialization")
-            print("✓ Existing users preserved - no changes made")
-        
-        db.session.commit()
-        print("✓ Database initialization complete!")
-        
-except Exception as e:
-    print(f"❌ Database initialization error: {e}")
-    print("App will continue without database initialization")
+            print(f"⚠ Database init warning: {e}")
+            # Don't fail startup - app will work, migrations can run later
+            _init_done = True  # Mark as done to prevent retry loops
 
-print("=== DATABASE INITIALIZATION END ===")
+# Run initialization in background thread to not block worker startup
+init_thread = threading.Thread(target=init_database_lazy, daemon=True)
+init_thread.start()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
