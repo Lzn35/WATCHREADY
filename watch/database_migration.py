@@ -23,7 +23,7 @@ def create_backup():
 	db_path = 'instance/watch_db.sqlite'
 	
 	if not os.path.exists(db_path):
-		print("❌ Database not found at:", db_path)
+		print("ERROR: Database not found at:", db_path)
 		return False
 	
 	backup_dir = 'instance/backups'
@@ -32,15 +32,15 @@ def create_backup():
 	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 	backup_path = os.path.join(backup_dir, f'watch_db.sqlite.migration_backup.{timestamp}')
 	
-	print(f"📦 Creating backup at: {backup_path}")
+	print(f"Creating backup at: {backup_path}")
 	shutil.copy2(db_path, backup_path)
-	print(f"✅ Backup created successfully")
+	print(f"Backup created successfully")
 	return True
 
 def migrate_database():
 	"""Run database migration"""
 	print("\n" + "="*60)
-	print("🚀 Starting Database Migration for Panel Recommendations")
+	print("Starting Database Migration for Panel Recommendations")
 	print("="*60 + "\n")
 	
 	app = create_app()
@@ -49,7 +49,7 @@ def migrate_database():
 		# Step 1: Create backup
 		print("Step 1: Creating database backup...")
 		if not create_backup():
-			print("❌ Migration aborted - backup failed")
+			print("ERROR: Migration aborted - backup failed")
 			return False
 		
 		# Step 2: Create new tables
@@ -57,9 +57,9 @@ def migrate_database():
 		try:
 			# This will create tables that don't exist
 			db.create_all()
-			print("✅ Tables created/verified successfully")
+			print("Tables created/verified successfully")
 		except Exception as e:
-			print(f"❌ Error creating tables: {e}")
+			print(f"ERROR: Error creating tables: {e}")
 			return False
 		
 		# Step 3: Verify tables exist
@@ -68,10 +68,10 @@ def migrate_database():
 			# Test queries to verify tables exist
 			room_count = Room.query.count()
 			section_count = Section.query.count()
-			print(f"✅ Room table: {room_count} records")
-			print(f"✅ Section table: {section_count} records")
+			print(f"Room table: {room_count} records")
+			print(f"Section table: {section_count} records")
 		except Exception as e:
-			print(f"❌ Error verifying tables: {e}")
+			print(f"ERROR: Error verifying tables: {e}")
 			return False
 		
 		# Step 4: Add sample data (optional)
@@ -87,9 +87,9 @@ def migrate_database():
 				]
 				for room in sample_rooms:
 					db.session.add(room)
-				print(f"✅ Added {len(sample_rooms)} sample rooms")
+				print(f"Added {len(sample_rooms)} sample rooms")
 			else:
-				print(f"ℹ️  Rooms already exist, skipping sample data")
+				print(f"INFO: Rooms already exist, skipping sample data")
 			
 			# Add sample sections if none exist
 			if Section.query.count() == 0:
@@ -103,27 +103,27 @@ def migrate_database():
 				]
 				for section in sample_sections:
 					db.session.add(section)
-				print(f"✅ Added {len(sample_sections)} sample sections")
+				print(f"Added {len(sample_sections)} sample sections")
 			else:
-				print(f"ℹ️  Sections already exist, skipping sample data")
+				print(f"INFO: Sections already exist, skipping sample data")
 			
 			db.session.commit()
 		except Exception as e:
 			db.session.rollback()
-			print(f"⚠️  Warning: Could not add sample data: {e}")
+			print(f"WARNING: Could not add sample data: {e}")
 		
 		# Step 5: Summary
 		print("\n" + "="*60)
-		print("✅ Migration Completed Successfully!")
+		print("Migration Completed Successfully!")
 		print("="*60)
 		print("\nWhat was added:")
-		print("  ✓ Room table (for schedule room references)")
-		print("  ✓ Section table (for student section references)")
-		print("  ✓ Foreign key columns added to Schedule and Person models")
+		print("  - Room table (for schedule room references)")
+		print("  - Section table (for student section references)")
+		print("  - Foreign key columns added to Schedule and Person models")
 		print("\nBackward Compatibility:")
-		print("  ✓ Old 'room' and 'section' text fields still work")
-		print("  ✓ No existing data was modified or deleted")
-		print("  ✓ All existing functionality preserved")
+		print("  - Old 'room' and 'section' text fields still work")
+		print("  - No existing data was modified or deleted")
+		print("  - All existing functionality preserved")
 		print("\nNext Steps:")
 		print("  1. Test the application to ensure everything works")
 		print("  2. Start using the new Room and Section dropdowns")
@@ -135,11 +135,12 @@ def migrate_database():
 if __name__ == '__main__':
 	success = migrate_database()
 	if success:
-		print("\n🎉 Database migration completed successfully!")
+		print("\nDatabase migration completed successfully!")
 		print("You can now restart your application.\n")
 	else:
-		print("\n❌ Migration failed. Check the error messages above.")
+		print("\nMigration failed. Check the error messages above.")
 		print("Your database has NOT been modified (backup was not applied).\n")
+
 
 
 
